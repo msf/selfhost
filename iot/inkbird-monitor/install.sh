@@ -1,26 +1,22 @@
 #!/bin/bash
+# Fetch and build inkbird-monitor from GitHub
 set -euo pipefail
-cd "$(dirname "$0")"
 
-SERVICE=inkbird-monitor.service
+REPO="https://github.com/msf/inkbird-monitor.git"
+BINARY="/usr/local/bin/inkbird-monitor"
+TMPDIR=$(mktemp -d)
 
-# Check if binary exists
-command -v inkbird-monitor >/dev/null || {
-    echo "ERROR: inkbird-monitor binary not found in PATH"
-    echo "Build from: github.com/msf/inkbird-monitor"
-    exit 1
-}
+cleanup() { rm -rf "$TMPDIR"; }
+trap cleanup EXIT
 
-# Install systemd service
-install -Dm644 "$SERVICE" "/etc/systemd/system/$SERVICE"
+echo "Fetching inkbird-monitor..."
+git clone --depth 1 "$REPO" "$TMPDIR"
 
-# Create config directory
-mkdir -p /etc/inkbird-monitor
+echo "Building..."
+cd "$TMPDIR"
+CGO_ENABLED=0 go build -ldflags="-w -s" -o iam-t1-exporter .
 
-# Reload and enable
-systemctl daemon-reload
-systemctl enable "$SERVICE"
+echo "Installing to $BINARY..."
+install -Dm755 iam-t1-exporter "$BINARY"
 
-echo "Installed: /etc/systemd/system/$SERVICE"
-echo "Configure: /etc/inkbird-monitor/config.yaml (see repo for example)"
-echo "Start: systemctl start $SERVICE"
+echo "Done. Run: inkbird-monitor --help"
