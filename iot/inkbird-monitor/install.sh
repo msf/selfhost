@@ -57,6 +57,12 @@ EOF
     echo "Created $CONFIG_DIR/env - EDIT THIS FILE with your settings!"
 fi
 
+# Ensure bluetooth group exists
+if ! getent group bluetooth >/dev/null 2>&1; then
+    echo "Creating bluetooth group..."
+    groupadd -r bluetooth || true
+fi
+
 # Create systemd service
 echo "Installing systemd service..."
 cat > /etc/systemd/system/inkbird-monitor.service << 'EOF'
@@ -67,8 +73,8 @@ Wants=bluetooth.service
 
 [Service]
 Type=simple
-User=root
-Group=root
+User=nobody
+Group=bluetooth
 EnvironmentFile=/etc/inkbird-monitor/env
 ExecStart=/usr/local/bin/inkbird-monitor
 Restart=on-failure
