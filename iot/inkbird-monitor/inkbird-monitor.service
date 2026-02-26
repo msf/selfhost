@@ -1,19 +1,20 @@
 [Unit]
 Description=Inkbird IAM-T1 CO2 Sensor Monitor
-After=network-online.target
-Wants=network-online.target
+After=network-online.target bluetooth.service
+Wants=network-online.target bluetooth.service
 
 [Service]
 Type=simple
+User=nobody
+Group=bluetooth
+EnvironmentFile=%h/selfhost/iot/inkbird-monitor/env
 ExecStart=/usr/local/bin/inkbird-monitor
 Restart=always
 RestartSec=10
-User=nobody
-Group=nogroup
 
-# BLE access
-AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
-CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+# BLE access via capabilities
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
 
 [Install]
 WantedBy=multi-user.target
