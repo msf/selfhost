@@ -39,6 +39,7 @@ MQTT_SERVER=tcp://localhost:1883
 MQTT_USERNAME=
 MQTT_PASSWORD=
 VM_ENDPOINT=http://localhost:8428/api/v1/write
+DB_PATH=/var/lib/inkbird-monitor/payloads.db
 EOF
     echo "Created $CONFIG_DIR/env - EDIT THIS FILE with your settings!"
 fi
