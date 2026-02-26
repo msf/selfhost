@@ -62,7 +62,7 @@ RestartSec=10
 TimeoutStopSec=30
 
 # Bluetooth permissions
-DeviceAllow=/dev/hci0 rw
+DeviceAllow=/dev/hci0 r
 
 # Security hardening
 NoNewPrivileges=true
