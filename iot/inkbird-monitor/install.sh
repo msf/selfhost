@@ -7,6 +7,19 @@ BINARY="/usr/local/bin/inkbird-monitor"
 CONFIG_DIR="/etc/inkbird-monitor"
 TMPDIR=$(mktemp -d)
 
+# Detect Go installation (common paths)
+for go_path in /usr/local/go/bin/go /usr/bin/go /home/linuxbrew/.linuxbrew/bin/go; do
+    if [ -x "$go_path" ]; then
+        export PATH="$(dirname "$go_path"):$PATH"
+        break
+    fi
+done
+
+if ! command -v go >/dev/null 2>&1; then
+    echo "ERROR: Go not found. Install Go first."
+    exit 1
+fi
+
 cleanup() { rm -rf "$TMPDIR"; }
 trap cleanup EXIT
 
