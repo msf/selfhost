@@ -1,11 +1,24 @@
 #!/bin/bash
-# Fetch, build and install inkbird-monitor with systemd service
+# Fetch and build inkbird-monitor (self-contained in repo)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="https://github.com/msf/inkbird-monitor.git"
-BINARY="/usr/local/bin/inkbird-monitor"
-CONFIG_DIR="/etc/inkbird-monitor"
+BINARY="$SCRIPT_DIR/bin/inkbird-monitor"
 TMPDIR=$(mktemp -d)
+
+# Detect Go installation (common paths)
+for go_path in /usr/local/go/bin/go /usr/bin/go /home/linuxbrew/.linuxbrew/bin/go; do
+    if [ -x "$go_path" ]; then
+        export PATH="$(dirname "$go_path"):$PATH"
+        break
+    fi
+done
+
+if ! command -v go >/dev/null 2>&1; then
+    echo "ERROR: Go not found. Install Go first."
+    exit 1
+fi
 
 cleanup() { rm -rf "$TMPDIR"; }
 trap cleanup EXIT
@@ -23,14 +36,39 @@ cd "$TMPDIR"
 CGO_ENABLED=0 go build -ldflags="-w -s" -o inkbird-monitor .
 
 echo "Installing binary to $BINARY..."
+mkdir -p "$SCRIPT_DIR/bin"
 install -Dm755 inkbird-monitor "$BINARY"
 
-echo "Creating config directory..."
-mkdir -p "$CONFIG_DIR"
+cd "$SCRIPT_DIR"
 
 # Create env file if it doesn't exist
-if [ ! -f "$CONFIG_DIR/env" ]; then
-    cat > "$CONFIG_DIR/env" << 'EOF'
+if [ ! -f "./env" ]; then
+    cp env.example ./env
+    echo "Created ./env - EDIT THIS FILE with your settings!"
+fi
+
+# Create data directory
+mkdir -p ./data
+
+# Ensure bluetooth group exists
+if ! getent group bluetooth >/dev/null 2>&1; then
+    echo "Creating bluetooth group..."
+    groupadd -r bluetooth || true
+fi
+
+echo ""
+echo "=== NEXT STEPS ==="
+echo "1. Edit ./env with your settings"
+echo "2. Find your Inkbird MAC: sudo hcitool lescan"
+echo "3. Run: ./bin/inkbird-monitor"
+echo "   Or use ./inkbird-monitor.service with systemd"
+=======
+install -Dm755 inkbird-monitor "$BINARY"
+
+
+# Create env file if it doesn't exist
+if [ ! -f "$SCRIPT_DIR/env" ]; then
+    cat > "$SCRIPT_DIR/env" << 'EOF'
 # Inkbird IAM-T1 Configuration
 # Get device address with: sudo hcitool lescan
 
@@ -41,7 +79,7 @@ MQTT_PASSWORD=
 VM_ENDPOINT=http://localhost:8428/api/v1/write
 DB_PATH=/var/lib/inkbird-monitor/payloads.db
 EOF
-    echo "Created $CONFIG_DIR/env - EDIT THIS FILE with your settings!"
+    echo "Created $SCRIPT_DIR/env - EDIT THIS FILE with your settings!"
 fi
 
 # Create systemd service
@@ -86,7 +124,7 @@ systemctl enable inkbird-monitor
 
 echo ""
 echo "=== NEXT STEPS ==="
-echo "1. Edit $CONFIG_DIR/env with your settings:"
+echo "1. Edit $SCRIPT_DIR/env with your settings:"
 echo "   - DEVICE_ADDR: MAC address of your Inkbird sensor"
 echo "   - MQTT_SERVER: Your MQTT broker (e.g., tcp://localhost:1883)"
 echo "   - MQTT_USERNAME / MQTT_PASSWORD: MQTT credentials"
