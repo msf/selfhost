@@ -1,142 +1,61 @@
 #!/bin/bash
 # Fetch and build inkbird-monitor (self-contained in repo)
 set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="https://github.com/msf/inkbird-monitor.git"
 BINARY="$SCRIPT_DIR/bin/inkbird-monitor"
-TMPDIR=$(mktemp -d)
-
-# Detect Go installation (common paths)
-for go_path in /usr/local/go/bin/go /usr/bin/go /home/linuxbrew/.linuxbrew/bin/go; do
-    if [ -x "$go_path" ]; then
-        export PATH="$(dirname "$go_path"):$PATH"
-        break
-    fi
-done
-
+TMPDIR="$(mktemp -d)"
+SERVICE_USER="bleclient"
+SERVICE_GROUP="bleclient"
+DATA_DIR="$SCRIPT_DIR/data"
+DB_FILE="$DATA_DIR/inkbird.db"
 if ! command -v go >/dev/null 2>&1; then
     echo "ERROR: Go not found. Install Go first."
     exit 1
 fi
-
 cleanup() { rm -rf "$TMPDIR"; }
 trap cleanup EXIT
-
-# Check for BLE adapter
-if ! hciconfig hci0 >/dev/null 2>&1; then
-    echo "WARNING: No Bluetooth adapter found (hci0). Service may fail."
+# Check for BLE adapter (hciconfig is deprecated but still useful if present)
+if command -v hciconfig >/dev/null 2>&1; then
+    if ! hciconfig hci0 >/dev/null 2>&1; then
+        echo "WARNING: No Bluetooth adapter found (hci0). Service may fail."
+    fi
 fi
-
 echo "Fetching inkbird-monitor..."
 git clone --depth 1 "$REPO" "$TMPDIR"
-
 echo "Building..."
 cd "$TMPDIR"
 CGO_ENABLED=0 go build -ldflags="-w -s" -o inkbird-monitor .
-
 echo "Installing binary to $BINARY..."
 mkdir -p "$SCRIPT_DIR/bin"
 install -Dm755 inkbird-monitor "$BINARY"
-
 cd "$SCRIPT_DIR"
-
-# Create env file if it doesn't exist
-if [ ! -f "./env" ]; then
-    cp env.example ./env
-    echo "Created ./env - EDIT THIS FILE with your settings!"
-fi
-
-# Create data directory
-mkdir -p ./data
-
-# Ensure bluetooth group exists
-if ! getent group bluetooth >/dev/null 2>&1; then
-    echo "Creating bluetooth group..."
-    groupadd -r bluetooth || true
-fi
-
-echo ""
-echo "=== NEXT STEPS ==="
-echo "1. Edit ./env with your settings"
-echo "2. Find your Inkbird MAC: sudo hcitool lescan"
-echo "3. Run: ./bin/inkbird-monitor"
-echo "   Or use ./inkbird-monitor.service with systemd"
-=======
-install -Dm755 inkbird-monitor "$BINARY"
-
-
 # Create env file if it doesn't exist
 if [ ! -f "$SCRIPT_DIR/env" ]; then
-    cat > "$SCRIPT_DIR/env" << 'EOF'
-# Inkbird IAM-T1 Configuration
-# Get device address with: sudo hcitool lescan
-
-DEVICE_ADDR=62:00:A1:3F:B4:26
-MQTT_SERVER=tcp://localhost:1883
-MQTT_USERNAME=
-MQTT_PASSWORD=
-VM_ENDPOINT=http://localhost:8428/api/v1/write
-DB_PATH=/var/lib/inkbird-monitor/payloads.db
-EOF
+    cp "$SCRIPT_DIR/env.example" "$SCRIPT_DIR/env"
     echo "Created $SCRIPT_DIR/env - EDIT THIS FILE with your settings!"
 fi
 
-# Create systemd service
+# Create service user/group if missing
+if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
+    echo "Creating system user: $SERVICE_USER"
+    sudo useradd --system --create-home --home-dir /var/lib/inkbird-monitor \
+        --shell /usr/sbin/nologin --user-group "$SERVICE_USER"
+fi
+
+# Create data dir + db file and set ownership
+mkdir -p "$DATA_DIR"
+touch "$DB_FILE"
+sudo chown -R "$SERVICE_USER:$SERVICE_GROUP" "$DATA_DIR"
+sudo chmod 750 "$DATA_DIR"
+sudo chmod 640 "$DB_FILE"
+# Create systemd service symlink
 echo "Installing systemd service..."
-cat > /etc/systemd/system/inkbird-monitor.service << 'EOF'
-[Unit]
-Description=Inkbird IAM-T1 CO2 Monitor
-After=bluetooth.service
-Wants=bluetooth.service
-
-[Service]
-Type=simple
-User=root
-Group=root
-EnvironmentFile=/etc/inkbird-monitor/env
-ExecStart=/usr/local/bin/inkbird-monitor
-Restart=on-failure
-RestartSec=10
-TimeoutStopSec=30
-
-# Bluetooth permissions
-DeviceAllow=/dev/hci0 r
-
-# Security hardening
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/var/lib/inkbird-monitor /var/log
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Create data directory
-mkdir -p /var/lib/inkbird-monitor
-
+sudo ln -fs "$SCRIPT_DIR/inkbird-monitor.service" /etc/systemd/system/inkbird-monitor.service
 echo "Reloading systemd..."
-systemctl daemon-reload
-
-echo "Enabling inkbird-monitor..."
-systemctl enable inkbird-monitor
-
-echo ""
-echo "=== NEXT STEPS ==="
-echo "1. Edit $SCRIPT_DIR/env with your settings:"
-echo "   - DEVICE_ADDR: MAC address of your Inkbird sensor"
-echo "   - MQTT_SERVER: Your MQTT broker (e.g., tcp://localhost:1883)"
-echo "   - MQTT_USERNAME / MQTT_PASSWORD: MQTT credentials"
-echo ""
-echo "2. Find your Inkbird MAC address:"
-echo "   sudo hcitool lescan"
-echo ""
-echo "3. Start the service:"
-echo "   sudo systemctl start inkbird-monitor"
-echo ""
-echo "4. Check status:"
-echo "   sudo systemctl status inkbird-monitor"
-echo "   journalctl -u inkbird-monitor -f"
-echo ""
-echo "Done!"
+sudo systemctl daemon-reload
+echo "Enabling and starting inkbird-monitor..."
+sudo systemctl enable --now inkbird-monitor
+echo "Done. Check status with:"
+echo "  sudo systemctl status inkbird-monitor"
+echo "  journalctl -u inkbird-monitor -n 100 --no-pager"
