@@ -6,11 +6,16 @@ REPO="https://github.com/msf/inkbird-monitor.git"
 BINARY="$SCRIPT_DIR/bin/inkbird-monitor"
 TMPDIR="$(mktemp -d)"
 SERVICE_USER="bleclient"
-SERVICE_GROUP="bleclient"
+SERVICE_GROUP="staff"
 DATA_DIR="$SCRIPT_DIR/data"
-DB_FILE="$DATA_DIR/inkbird.db"
+DB_FILE="$DATA_DIR/payloads.db"
 if ! command -v go >/dev/null 2>&1; then
     echo "ERROR: Go not found. Install Go first."
+    exit 1
+fi
+
+if ! getent group "$SERVICE_GROUP" >/dev/null 2>&1; then
+    echo "ERROR: Group '$SERVICE_GROUP' not found"
     exit 1
 fi
 cleanup() { rm -rf "$TMPDIR"; }
@@ -39,16 +44,20 @@ fi
 # Create service user/group if missing
 if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
     echo "Creating system user: $SERVICE_USER"
-    sudo useradd --system --create-home --home-dir /var/lib/inkbird-monitor \
-        --shell /usr/sbin/nologin --user-group "$SERVICE_USER"
+    sudo useradd --system --gid "$SERVICE_GROUP" --no-create-home \
+        --shell /usr/sbin/nologin "$SERVICE_USER"
+else
+    sudo usermod -g "$SERVICE_GROUP" "$SERVICE_USER"
 fi
+
+sudo usermod -aG "$SERVICE_GROUP" "$SERVICE_USER"
 
 # Create data dir + db file and set ownership
 mkdir -p "$DATA_DIR"
 touch "$DB_FILE"
 sudo chown -R "$SERVICE_USER:$SERVICE_GROUP" "$DATA_DIR"
-sudo chmod 750 "$DATA_DIR"
-sudo chmod 640 "$DB_FILE"
+sudo chmod 2775 "$DATA_DIR"
+sudo chmod 664 "$DB_FILE"
 # Create systemd service symlink
 echo "Installing systemd service..."
 sudo ln -fs "$SCRIPT_DIR/inkbird-monitor.service" /etc/systemd/system/inkbird-monitor.service
