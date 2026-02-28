@@ -2,7 +2,6 @@
 Description=Inkbird IAM-T1 CO2 Sensor Monitor
 Wants=network-online.target bluetooth.service
 After=network-online.target bluetooth.service
-Requires=bluetooth.service
 
 [Service]
 Type=simple
