@@ -62,5 +62,81 @@ echo "1. Edit ./env with your settings"
 echo "2. Find your Inkbird MAC: sudo hcitool lescan"
 echo "3. Run: ./bin/inkbird-monitor"
 echo "   Or use ./inkbird-monitor.service with systemd"
+=======
+install -Dm755 inkbird-monitor "$BINARY"
+
+
+# Create env file if it doesn't exist
+if [ ! -f "$SCRIPT_DIR/env" ]; then
+    cat > "$SCRIPT_DIR/env" << 'EOF'
+# Inkbird IAM-T1 Configuration
+# Get device address with: sudo hcitool lescan
+
+DEVICE_ADDR=62:00:A1:3F:B4:26
+MQTT_SERVER=tcp://localhost:1883
+MQTT_USERNAME=
+MQTT_PASSWORD=
+VM_ENDPOINT=http://localhost:8428/api/v1/write
+DB_PATH=/var/lib/inkbird-monitor/payloads.db
+EOF
+    echo "Created $SCRIPT_DIR/env - EDIT THIS FILE with your settings!"
+fi
+
+# Create systemd service
+echo "Installing systemd service..."
+cat > /etc/systemd/system/inkbird-monitor.service << 'EOF'
+[Unit]
+Description=Inkbird IAM-T1 CO2 Monitor
+After=bluetooth.service
+Wants=bluetooth.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/inkbird-monitor/env
+ExecStart=/usr/local/bin/inkbird-monitor
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+# Bluetooth permissions
+DeviceAllow=/dev/hci0 r
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/inkbird-monitor /var/log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create data directory
+mkdir -p /var/lib/inkbird-monitor
+
+echo "Reloading systemd..."
+systemctl daemon-reload
+
+echo "Enabling inkbird-monitor..."
+systemctl enable inkbird-monitor
+
+echo ""
+echo "=== NEXT STEPS ==="
+echo "1. Edit $SCRIPT_DIR/env with your settings:"
+echo "   - DEVICE_ADDR: MAC address of your Inkbird sensor"
+echo "   - MQTT_SERVER: Your MQTT broker (e.g., tcp://localhost:1883)"
+echo "   - MQTT_USERNAME / MQTT_PASSWORD: MQTT credentials"
+echo ""
+echo "2. Find your Inkbird MAC address:"
+echo "   sudo hcitool lescan"
+echo ""
+echo "3. Start the service:"
+echo "   sudo systemctl start inkbird-monitor"
+echo ""
+echo "4. Check status:"
+echo "   sudo systemctl status inkbird-monitor"
+echo "   journalctl -u inkbird-monitor -f"
 echo ""
 echo "Done!"
