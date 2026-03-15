@@ -4,8 +4,6 @@ services:
     image: docker.io/eclipse-mosquitto:2
     restart: unless-stopped
     network_mode: host
-    ports:
-      - "1883:1883"
     volumes:
       - ./mosquitto:/etc/mosquitto
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
@@ -19,8 +17,6 @@ services:
     volumes:
       - /media/simple/zigbee2mqtt:/app/data
       - /run/udev:/run/udev:ro
-    ports:
-      - 8080:8080
     environment:
       - TZ=UTC
     group_add:

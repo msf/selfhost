@@ -3,7 +3,7 @@ services:
     image: victoriametrics/victoria-metrics:v1.133.0
     container_name: victoriametrics
     command:
-      - '-memory.allowedBytes=4GiB'
+      - '-memory.allowedBytes=8GiB'
       - '-retentionPeriod=10y'
       - '-influxListenAddr=:8089'
     ports:

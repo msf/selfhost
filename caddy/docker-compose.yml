@@ -1,11 +1,11 @@
-version: '3.8'
-
 services:
   caddy:
     build: .
     container_name: caddy
     restart: unless-stopped
     network_mode: host
+    cap_add:
+      - NET_ADMIN
     user: "65534:4"  # nobody:adm
     environment:
       - UMASK=0022  # Files 644, dirs 755

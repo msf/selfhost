@@ -1,7 +1,7 @@
 services:
   vmagent:
     container_name: vmagent
-    image: victoriametrics/vmagent:v1.99.0
+    image: victoriametrics/vmagent:v1.136.0
     restart: unless-stopped
     network_mode: host
     volumes:

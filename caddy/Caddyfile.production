@@ -1,6 +1,9 @@
 {
 	email miguel.filipe@gmail.com
 	admin localhost:2019
+	metrics {
+		per_host
+	}
 }
 
 (security) {
