@@ -14,13 +14,14 @@ import (
 )
 
 const (
-	gandiAPI  = "https://api.gandi.net/v5/livedns/domains"
-	checkIPv4 = "https://ipv4.icanhazip.com"
-	checkIPv6 = "https://ipv6.icanhazip.com"
-	domain    = "mfilipe.eu"
+	gandiAPI       = "https://api.gandi.net/v5/livedns/domains"
+	checkIPv4      = "https://ipv4.icanhazip.com"
+	checkIPv6      = "https://ipv6.icanhazip.com"
+	domain         = "mfilipe.eu"
+	refreshSeconds = 300
 )
 
-var records = []string{"tv", "img"}
+var records = []string{"tv", "img", "home", "graf", "notes", "www"}
 
 func getIP(url string) (string, error) {
 	resp, err := http.Get(url)
@@ -41,9 +42,9 @@ func getIP(url string) (string, error) {
 
 func updateRecord(token, subdomain, recordType, ip string) error {
 	url := fmt.Sprintf("%s/%s/records/%s/%s", gandiAPI, domain, subdomain, recordType)
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"rrset_values": []string{ip},
-		"rrset_ttl":    300,
+		"rrset_ttl":    refreshSeconds,
 	}
 	data, _ := json.Marshal(payload)
 
@@ -101,6 +102,6 @@ func main() {
 			}
 		}
 
-		time.Sleep(5 * time.Minute)
+		time.Sleep(refreshSeconds * time.Second)
 	}
 }
