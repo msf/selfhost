@@ -1,0 +1,9 @@
+# Generated output
+public/
+.jekyll-cache/
+build/
+jekyll-tmp/
+jekyll-cache/
+
+# Jekyll generated files
+_site/
