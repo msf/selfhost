@@ -1,0 +1,10 @@
+[Unit]
+Description=Blog auto-rebuild timer (every 30 minutes)
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=30min
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target
