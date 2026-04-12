@@ -1,0 +1,11 @@
+[Unit]
+Description=Blog auto-rebuild (msf.github.io → static site)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=bolotas
+WorkingDirectory=/srv/selfhost/blog
+ExecStart=/bin/bash /srv/selfhost/blog/build.sh
+StandardOutput=journal
+StandardError=journal
