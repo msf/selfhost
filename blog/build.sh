@@ -21,7 +21,7 @@ layout: home
 title: Miguel Filipe
 ---
 EOF
-cat "$SITE/README.md" >> "$BUILD/index.md"
+sed "s/(\([^)]*\)\.md)/(\1.html)/g" "$SITE/README.md" >> "$BUILD/index.md"
 
 # add front matter to blogposts + fix .md → .html internal links
 for f in "$BUILD/blogpost"/*.md; do
