@@ -21,7 +21,7 @@ const (
 	refreshSeconds = 300
 )
 
-var records = []string{"tv", "img", "home", "graf", "notes", "www"}
+var records = []string{"tv", "img", "home", "graf", "notes", "www", "blog"}
 
 func getIP(url string) (string, error) {
 	resp, err := http.Get(url)
