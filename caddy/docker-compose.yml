@@ -14,6 +14,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - /srv/logs/caddy:/srv/logs/caddy
+      - /srv/selfhost/blog/public:/srv/selfhost/blog/public:ro
     env_file:
       - env
 

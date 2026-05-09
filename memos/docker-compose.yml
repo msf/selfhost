@@ -1,0 +1,14 @@
+name: memos
+
+services:
+  memos:
+    image: neosmemo/memos:stable
+    container_name: memos
+    ports:
+      - "127.0.0.1:5230:5230"
+    volumes:
+      - /srv/selfhost/memos/data:/var/opt/memos
+    environment:
+      - MEMOS_DRIVER=sqlite
+      - MEMOS_DSN=/var/opt/memos/memos.db
+    restart: unless-stopped

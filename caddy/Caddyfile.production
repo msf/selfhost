@@ -43,7 +43,7 @@
 			header_up X-Forwarded-For {remote_host}
 			header_up X-Real-IP {remote_host}
 		}
-		encode gzip
+		encode zstd gzip
 	}
 	
 	# Immich - img.mfilipe.eu
@@ -54,17 +54,40 @@
 			header_up X-Forwarded-For {remote_host}
 			header_up X-Real-IP {remote_host}
 		}
-		encode gzip
+		encode zstd gzip
 	}
 	
 	# Future: metrics.mfilipe.eu for Grafana (consider VPN-only)
-	@metrics host metrics.mfilipe.eu
+	@metrics host graf.mfilipe.eu
 	handle @metrics {
 		import security
-		reverse_proxy localhost:3000
-		encode gzip
+		reverse_proxy localhost:3000 {
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Real-IP {remote_host}
+		}
+		encode zstd gzip
 	}
 	
+	# Memos - notes.mfilipe.eu
+	@notes host notes.mfilipe.eu
+	handle @notes {
+		import security
+		reverse_proxy localhost:5230 {
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Real-IP {remote_host}
+		}
+		encode zstd gzip
+	}
+
+	# Blog - blog.mfilipe.eu
+	@blog host blog.mfilipe.eu
+	handle @blog {
+		import security
+		root * /srv/selfhost/blog/public
+		file_server
+		encode gzip
+	}
+
 	# Catch-all
 	handle {
 		respond "Unknown subdomain" 404
