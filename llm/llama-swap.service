@@ -1,0 +1,54 @@
+[Unit]
+Description=llama-swap (multi-model OpenAI-compatible proxy fronting llama-server)
+After=default.target
+
+[Service]
+Type=simple
+# Pin GPU to R9700 (Vulkan device index 1 → becomes 0 once filtered).
+Environment=GGML_VK_VISIBLE_DEVICES=1
+# llama.cpp runtime libs for the spawned llama-server children.
+Environment=LD_LIBRARY_PATH=%h/.local/share/llama.cpp/current
+# Force pure VRAM allocation. Two env vars are needed; the first alone is
+# NOT sufficient on RDNA3/4 + RADV.
+#
+# 1. DISABLE_HOST_VISIBLE_VIDMEM=1 — disables the small host-visible-VRAM
+#    heap, so the allocator can't pick a memory type that ends up GTT-backed.
+# 2. ALLOW_SYSMEM_FALLBACK=0 — explicitly forbids fallback to system RAM
+#    (GTT) when the device-local heap is "full" (or appears full to the
+#    allocator). On 2026-05-07 we observed that with #1 alone the entire
+#    16 GiB MoE went to GTT anyway. With both, the load either fits in
+#    VRAM or fails loudly with a clean OOM-on-device — never silently
+#    eating host RAM (which the systemd cgroup CANNOT account for, since
+#    GTT is allocated by the amdgpu driver in kernel space).
+Environment=GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM=1
+Environment=GGML_VK_ALLOW_SYSMEM_FALLBACK=0
+Environment=GGML_VK_ENABLE_MEMORY_PRIORITY=1
+Environment=GGML_VK_MEMORY_LOGGER=1
+# VK_EXT_memory_priority — marks our big buffers as max-priority. With this,
+# amdgpu/TTM will not evict them to GTT under host-RAM pressure (an idle
+# model otherwise migrates VRAM→GTT after ~minutes of system pressure,
+# observed on 2026-05-07).
+Environment=GGML_VK_ENABLE_MEMORY_PRIORITY=1
+ExecStart=%h/.local/share/llama-swap/current/llama-swap \
+    -config /srv/selfhost/llm/llama-swap.yaml \
+    -listen 0.0.0.0:8090 \
+    -watch-config
+Restart=on-failure
+RestartSec=5
+OOMScoreAdjust=999
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+
+# Hard cap. With 30 GiB system RAM, this leaves ~6 GiB for the OS, ZFS ARC, and
+# the rest of the workloads. If anything goes wrong (mmap leak, unbounded
+# growth) systemd OOM-kills *this service* — the host doesn't panic.
+MemoryMax=24G
+# Burst budget for cold-load: same as MemoryMax since dense ~22 GiB GGUFs
+# briefly need the full headroom while reading from disk.
+MemoryHigh=22G
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,242 @@
+# llama-swap config for hopper (R9700, 32 GiB VRAM, Vulkan/RADV).
+#
+# Conventions:
+# - GPU pin via GGML_VK_VISIBLE_DEVICES=1 (set in the systemd unit) → R9700 = Vulkan0 → -mg 0.
+# - Flash attention + KV-cache q8_0 default (long ctx fits in VRAM).
+# - --no-mmap on the big dense models: the file is read once into a transient
+#   buffer, shipped to VRAM, freed. Avoids 22 GiB pinned in the kernel page
+#   cache (the mistake that OOM'd the host on first run).
+# - Single group, swap=true, exclusive=true: only one model loaded at a time.
+# - ttl=0: never auto-unload. Switching models via `/model X` in the hermes TUI
+#   (or hitting a different model via the API) evicts the current one anyway,
+#   thanks to the group config. Auto-TTL just punished interactive use — read a
+#   reply, think for >5 min, pay a 30 s–3 min cold reload on the next turn.
+#
+# Methodology lineage: blog/site/blogpost/AGENTS.md (Framework 13 sweep, Apr 2026).
+
+# 300s lets the 22 GiB GGUF cold-read off ZFS finish on first load. Re-loads hit
+# the page cache (or are quick from disk with --no-mmap) and finish in seconds.
+healthCheckTimeout: 300
+logLevel: info
+
+# llama-swap auto-assigns ${PORT} starting here for each spawned child.
+startPort: 9000
+
+macros:
+  # Shared llama-server flags (everything except -m and -c). Each model's cmd
+  # tacks on its model path, ctx, and any per-model toggles like --no-mmap.
+  "llama-server": >
+    /home/miguel/.local/share/llama.cpp/current/llama-server
+    --host 127.0.0.1 --port ${PORT}
+    -ngl 999 -t 12 --perf
+    -fa on -sm none -mg 0 -ctk q8_0 -ctv q8_0
+
+  "models_dir": "/media/simple/llm/models"
+
+models:
+
+  # tribal knowledge: this machine is memory starved VRAM 32GB, RAM:32GB
+  # there are a few other important services in the machine + ZFS.
+  # many kernel panics running out of memory
+  #  we haven't nailed down the exact config to make the system stable.
+  #  OOMS have occurred w/ almost all models, even on configs that in theory
+  #  leave ~7GB of VRAM available
+  #  (suspicion is extra memory used in specific situations we dont understand)
+  #  (like context checkpoint or other things.. prompt cache.. I dunno..)
+  #  TODO: we need to preserve the logs of llama-server executions for log diving after OOMs
+  #
+  #
+  # --- Big dense (R9700-fit, UD-Q5_K_XL) -------------------------------------
+  # `--no-mmap`: no kernel page-cache pinning of the 22 GiB blob.
+
+  # Per-model `env` is duplicated below: needed until the systemd unit's
+  # Environment=GGML_VK_ALLOW_SYSMEM_FALLBACK=0 takes effect (next restart).
+  # After that restart, these per-model env blocks are redundant and can be
+  # removed (the env propagates llama-swap → llama-server children).
+
+  # VRAM forecast (q8 KV, 1.5 GiB compute scratch budget; R9700 = 32 GiB):
+  #   gemma-31b @ 131k → wts 20.4 + KV 5.8 + cmp 1.5 = ~27.7 GiB ✓ 4 GiB margin
+  #   gemma-31b @ 180k → wts 20.4 + KV 7.6 + cmp 1.5 = ~29.5 GiB ✓ 2.5 GiB margin
+  # Gemma 4 has interleaved local/global attention (swa=1024); only ~1/6 of
+  # layers scale with ctx, so KV grows sub-linearly.
+  "gemma-31b":
+    aliases: ["gemma4", "gemma"]
+    ttl: 86400
+    # SWA prompt-cache checkpoints fully DISABLED (`-cpent -1
+    # --ctx-checkpoints 0 --cache-ram 0`). Default behaviour creates a
+    # 637 MiB checkpoint every 8 KiB tokens during prefill, capped at
+    # 8 GiB total. In our hermes workload that's pure cost: every turn
+    # appends tool-call output so the prefix shifts, all in-flight
+    # checkpoints get invalidated and erased before any reuse can
+    # happen. The only outcome was llama-server ballooning to ~23 GiB
+    # of host RAM and triggering massive swap thrashing (2026-05-07).
+    # If you find yourself sending the same long prefix repeatedly
+    # without modification (e.g. RAG with stable system prompt), it's
+    # worth re-enabling and tuning.
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/gemma-4-31B-it/gemma-4-31B-it-UD-Q4_K_XL.gguf
+      --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
+      --checkpoint-every-n-tokens -1 --ctx-checkpoints 0 
+
+  # qwen-27b — uniform attention, no SWA, 64 layers; KV-heavy.
+  #
+  # VRAM observed (q8 KV, with --no-host implicit via systemd env? no — set per-cmd):
+  #   -c 65536  → 21 GiB total (18.7 weights + ~2.3 KV+compute)
+  #   -c 131072 → 25 GiB total
+  # Naive formula `kv_heads*(kl+vl)*ctx*layers` predicts ~2x more; flash-attn
+  # KV layout + lazy slot alloc explain the gap.
+  #
+  # Pinned at -c 65536 because of a USABILITY ceiling, not a VRAM ceiling
+  # (2026-05-07 incident): prompt-processing on R9700/Vulkan is ~240 tok/s,
+  # so prefilling >65k tokens takes longer than hermes' chat-completion
+  # timeout → slot stays busy, hermes retries pile up, cascading 500/502.
+  # On dense no-SWA models, prefill latency is the binding constraint, not
+  # VRAM headroom. Gemma 4 SWA models don't have this problem.
+  "qwen-27b":
+    aliases: ["qwen", "qwen3.6-27b"]
+    ttl: 86400
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/Qwen3.6-27B/Qwen3.6-27B-UD-Q5_K_XL.gguf
+      --no-mmap -c 65536 --parallel 1 --reasoning-budget 8192
+
+  # gemma-26b-moe — Gemma 4 SWA + MoE. Cheapest KV-per-ctx of the four.
+  # 30 layers; only 5 are global-attention. Local 25 layers stay at
+  # window=1536 (per llama_kv_cache_iswa output) so don't scale with ctx.
+  #
+  # Quant: UD-Q6_K_XL (22 GB) since 2026-05-07. Old MXFP4_MOE (16 GB,
+  # ~Q4_K_M-equivalent quality) kept on disk as fallback. UD-Q6_K_XL
+  # fits easily at 180k and gives a noticeable quality bump for chat/code.
+  #
+  # Authoritative VRAM at -c 180000 (validated 2026-05-07 via
+  # /logs/stream/gemma-26b-moe → common_memory_breakdown_print):
+  #   total 24805 MiB = model 22201 + context 2029 + compute 574
+  #   → 7.1 GiB free margin in 32 GiB R9700.
+  # KV breakdown:
+  #   non-SWA cache (5 global layers, 180224 cells): 1870 MiB (q8_0)
+  #   SWA cache    (25 local layers,   1536 cells):  159 MiB (q8_0)
+  #
+  # SWA checkpoints fully disabled (-cpent -1 --ctx-checkpoints 0
+  # --cache-ram 0). See gemma-31b above for the full reasoning.
+  "gemma-26b-moe":
+    aliases: ["gemma-moe", "gemma4-moe"]
+    ttl: 86400
+    # Concurrency=1 because interactive use is one session at a time; giving
+    # the whole context budget to one slot beats splitting it.
+    # GGML_VK_ALLOW_SYSMEM_FALLBACK=0 forbids the Vulkan backend from spilling
+    # to GTT (host RAM). With this set, an over-budget load fails loudly
+    # instead of silently consuming host RAM and OOM'ing the host (boot OOM
+    # on 2026-05-07: see triage/2026-05-07-oom-after-boot.md).
+    # GGML_VK_ENABLE_MEMORY_PRIORITY=1 marks buffers as max-priority so TTM
+    # is *less* willing to evict VRAM→GTT under host pressure (advisory only;
+    # buys ~10s of grace under sustained pressure).
+    # GGML_VK_MEMORY_LOGGER=1 prints a per-allocation breakdown to the
+    # llama-server log on startup — useful when sizing ctx vs VRAM.
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/gemma-4-26B-A4B-it/gemma-4-26B-A4B-it-UD-Q5_K_XL.gguf
+      --no-mmap  -c 131072 --parallel 1 --reasoning-budget 8192
+      --checkpoint-every-n-tokens -1 --ctx-checkpoints 0 
+
+  # qwen-35b-moe — uniform attention, 2 kv_heads only (cheaper KV than qwen-27b).
+  # Forecast: @131k → wts 20.2 + KV 5.0 + compute 1.5 = ~26.7 GiB.
+  # Observed @131k: ~23 GiB total. ~9 GiB VRAM margin.
+  #
+  # `--parallel 1`: explicit single slot. Without this, llama.cpp defaults to
+  # 4 slots — each can independently get stuck in thinking-runaway and
+  # (because `--reasoning-budget` default is -1 = unrestricted) generate
+  # endlessly. We saw this on 2026-05-07: a slot decoded 42 085 thinking
+  # tokens before user noticed hermes hung at "iteration 1/120, receiving
+  # stream" for 6+ min.
+  #
+  # `--reasoning-budget 8192`: cap thinking-tokens per turn. Qwen 3.6 reasons
+  # in `<think>` blocks; without a budget the model can spiral. 8 KiB tokens
+  # is plenty for legit step-by-step on a typical prompt; runs that need more
+  # are usually a sign the model is repeating itself.
+  # Quant: UD-Q5_K_XL (25 GB) since 2026-05-07. Old MXFP4_MOE (21 GB) kept
+  # on disk as fallback. UD-Q6 doesn't fit at 131k; UD-Q5_K_XL is the
+  # quality ceiling on this hardware.
+  # No `--ctx-checkpoints` flag: Qwen 3.6 doesn't use SWA, so no
+  # checkpoint mechanism to bound.
+  "qwen-35b-moe":
+    aliases: ["qwen-moe", "qwen3.6-moe"]
+    ttl: 86400
+    # Active quant: UD-Q5_K_XL (25 GB).
+    # Fallback on disk: Qwen3.6-35B-A3B-MXFP4_MOE.gguf (21 GB).
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/Qwen3.6-35B-A3B/Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf
+      --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
+
+  # --- Speculative decoding experiment (added 2026-05-08) -------------------
+  #
+  # Gemma 4 31B (UD-Q4_K_XL, our local) main + Gemma 4 E2B (Q8_0, our
+  # local) draft. Adapted from a r/LocalLLaMA recipe; full notes at
+  # triage/2026-05-08-speculative-decoding.md (acceptance rates,
+  # parameter sweep, gotchas).
+  #
+  # VRAM forecast at -c 65536 (verify post-load via /logs/stream):
+  #   main 31B UD-Q4_K_XL : ~17 GiB  (3 GiB smaller than Q5_K_XL)
+  #   draft E2B Q8_0      :  ~5 GiB
+  #   main KV (q8) @ 65k  : ~2.8 GiB
+  #   draft KV (q8) @ 65k : ~2.4 GiB
+  #   compute scratch     : ~1.0 GiB
+  #   ≈ 28 GiB total → ~4 GiB margin in 32 GiB R9700.
+  #
+  # `--spec-draft-n-max 8`: tuned down from recipe's 32. With 8, draft
+  #   acceptance jumps from 42% → 72% on deterministic output (Python).
+  #   Less wasted draft work = better effective tput, even when raw
+  #   tg/s doesn't shift much (Vulkan main↔draft sync is the bottleneck).
+  # `--reasoning off` + LLAMA_CHAT_TEMPLATE_KWARGS env: disable thinking
+  #   mode for clean tg/s measurement.
+  "gemma-31b-spec":
+    aliases: ["gemma4-spec", "spec"]
+    ttl: 86400
+    env:
+      # JSON value passed via env var instead of cmd flag — llama-swap's
+      # arg-array shell-less spawn strips outer quotes, breaking the
+      # JSON parser when `--chat-template-kwargs '{"k":v}'` is passed
+      # on the command line. Env var bypasses the quoting problem.
+      - 'LLAMA_CHAT_TEMPLATE_KWARGS={"enable_thinking":false}'
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/gemma-4-31B-it/gemma-4-31B-it-UD-Q4_K_XL.gguf
+      --model-draft ${models_dir}/gemma-4-E2B-it/gemma-4-E2B-it-Q8_0.gguf
+      --no-mmap --ctx-size 65536 --parallel 1
+      --spec-draft-n-max 8 --spec-draft-n-min 0
+      --n-gpu-layers-draft 999
+      --cache-type-k-draft q8_0 --cache-type-v-draft q8_0
+
+  # --- Small / fast (smoke tests, draft candidates for MTP later) -----------
+  # mmap is fine here — files are <8 GiB and reload should be fast.
+
+  "gemma-e4b":
+    aliases: ["small", "fast"]
+    ttl: 86400
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/google_gemma-4-E4B-it-Q6_K_L.gguf
+      -c 32768
+
+  "qwen-4b":
+    aliases: ["draft"]
+    ttl: 86400
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+      -c 32768
+
+# One group, swap=true exclusive=true: only one model lives at a time across the
+# entire llama-swap instance. Hard guarantee against the dual-load scenario that
+# pushed the host to 25.4 GiB peak RSS on first run.
+groups:
+  "all":
+    swap: true
+    exclusive: true
+    members:
+      - "gemma-31b"
+      - "qwen-27b"
+      - "gemma-26b-moe"
+      - "qwen-35b-moe"
+      - "gemma-31b-spec"
