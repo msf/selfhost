@@ -24,8 +24,4 @@ fi
 
 ln -sfn "$TARGET" "$ROOT/current"
 
-if [ "$RESTART" = "restart" ] && systemctl --user is-enabled --quiet llama-server.service 2>/dev/null; then
-    systemctl --user restart llama-server.service
-fi
-
 echo "llama.cpp at $LATEST"

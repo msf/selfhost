@@ -6,7 +6,7 @@
 # - --no-mmap on the big dense models: the file is read once into a transient
 #   buffer, shipped to VRAM, freed. Avoids 22 GiB pinned in the kernel page
 #   cache (the mistake that OOM'd the host on first run).
-# - Single group, swap=true, exclusive=true: only one model loaded at a time.
+# - Single group, swap=true,``` exclusive=true: only one model loaded at a time.
 # - ttl=0: never auto-unload. Switching models via `/model X` in the hermes TUI
 #   (or hitting a different model via the API) evicts the current one anyway,
 #   thanks to the group config. Auto-TTL just punished interactive use — read a
@@ -18,6 +18,7 @@
 # the page cache (or are quick from disk with --no-mmap) and finish in seconds.
 healthCheckTimeout: 300
 logLevel: info
+logToStdout: "both"
 
 # llama-swap auto-assigns ${PORT} starting here for each spawned child.
 startPort: 9000
@@ -25,16 +26,6 @@ startPort: 9000
 macros:
   # Shared llama-server flags (everything except -m and -c). Each model's cmd
   # tacks on its model path, ctx, and any per-model toggles like --no-mmap.
-  "llama-server": >
-    /home/miguel/.local/share/llama.cpp/current/llama-server
-    --host 127.0.0.1 --port ${PORT}
-    -ngl 999 -t 12 --perf
-    -fa on -sm none -mg 0 -ctk q8_0 -ctv q8_0
-
-  "models_dir": "/media/simple/llm/models"
-
-models:
-
   # tribal knowledge: this machine is memory starved VRAM 32GB, RAM:32GB
   # there are a few other important services in the machine + ZFS.
   # many kernel panics running out of memory
@@ -43,8 +34,24 @@ models:
   #  leave ~7GB of VRAM available
   #  (suspicion is extra memory used in specific situations we dont understand)
   #  (like context checkpoint or other things.. prompt cache.. I dunno..)
-  #  TODO: we need to preserve the logs of llama-server executions for log diving after OOMs
+  #  --cache-ram 0 // added to some to try reduce OOMs
+  #  (OOMAdjustScore is now on the systemd service, making OS more stable)
+  #  -- this is still not solved and also which model behaves better is unsolved:
   #
+  # pile up here all settings attempting to reduce OOMs
+  "llama-server": >
+    /home/miguel/.local/share/llama.cpp/current/llama-server
+    --host 127.0.0.1 --port ${PORT}
+    -ngl 999 -t 12 --perf
+    -fa on -sm none -mg 0
+    -ctk q8_0 -ctv q8_0
+    --checkpoint-every-n-tokens -1 --ctx-checkpoints 2 
+    --cache-ram 2048 --no-host
+
+  "models_dir": "/media/simple/llm/models"
+
+models:
+
   #
   # --- Big dense (R9700-fit, UD-Q5_K_XL) -------------------------------------
   # `--no-mmap`: no kernel page-cache pinning of the 22 GiB blob.
@@ -77,7 +84,6 @@ models:
       ${llama-server}
       -m ${models_dir}/gemma-4-31B-it/gemma-4-31B-it-UD-Q4_K_XL.gguf
       --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
-      --checkpoint-every-n-tokens -1 --ctx-checkpoints 0 
 
   # qwen-27b — uniform attention, no SWA, 64 layers; KV-heavy.
   #
@@ -98,8 +104,8 @@ models:
     ttl: 86400
     cmd: |
       ${llama-server}
-      -m ${models_dir}/Qwen3.6-27B/Qwen3.6-27B-UD-Q5_K_XL.gguf
-      --no-mmap -c 65536 --parallel 1 --reasoning-budget 8192
+      -m ${models_dir}/Qwen3.6-27B/Qwen3.6-27B-UD-Q4_K_XL.gguf
+      --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
 
   # gemma-26b-moe — Gemma 4 SWA + MoE. Cheapest KV-per-ctx of the four.
   # 30 layers; only 5 are global-attention. Local 25 layers stay at
@@ -137,7 +143,6 @@ models:
       ${llama-server}
       -m ${models_dir}/gemma-4-26B-A4B-it/gemma-4-26B-A4B-it-UD-Q5_K_XL.gguf
       --no-mmap  -c 131072 --parallel 1 --reasoning-budget 8192
-      --checkpoint-every-n-tokens -1 --ctx-checkpoints 0 
 
   # qwen-35b-moe — uniform attention, 2 kv_heads only (cheaper KV than qwen-27b).
   # Forecast: @131k → wts 20.2 + KV 5.0 + compute 1.5 = ~26.7 GiB.
@@ -166,7 +171,7 @@ models:
     # Fallback on disk: Qwen3.6-35B-A3B-MXFP4_MOE.gguf (21 GB).
     cmd: |
       ${llama-server}
-      -m ${models_dir}/Qwen3.6-35B-A3B/Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf
+      -m ${models_dir}/Qwen3.6-35B-A3B/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
       --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
 
   # --- Speculative decoding experiment (added 2026-05-08) -------------------
