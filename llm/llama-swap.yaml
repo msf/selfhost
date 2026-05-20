@@ -19,6 +19,7 @@
 healthCheckTimeout: 300
 logLevel: info
 logToStdout: "both"
+metricsMaxInMemory: 500
 
 # llama-swap auto-assigns ${PORT} starting here for each spawned child.
 startPort: 9000
@@ -39,14 +40,26 @@ macros:
   #  -- this is still not solved and also which model behaves better is unsolved:
   #
   # pile up here all settings attempting to reduce OOMs
+  #
+  # --predict 32768: server-side default cap on tokens-per-turn.
+  # Without this, llama-server defaults to -1 (unlimited). On 2026-05-17 a
+  # qwen-27b-mtp slot ran 48k tokens over 72 min before being unloaded — past
+  # the </think> close, the model kept generating with no natural EOS. The
+  # --reasoning-budget 8192 cap only bounds the <think> block; the response
+  # afterwards needs its own ceiling. 32768 = 8k thinking + 24k response,
+  # leaving plenty of room for verbose code generation while still well clear
+  # of the 48k runaway scale. This is a DEFAULT, not a hard cap — a client
+  # that explicitly sends max_tokens > 32768 still wins.
   "llama-server": >
     /home/miguel/.local/share/llama.cpp/current/llama-server
     --host 127.0.0.1 --port ${PORT}
     -ngl 999 -t 12 --perf
     -fa on -sm none -mg 0
     -ctk q8_0 -ctv q8_0
-    --checkpoint-every-n-tokens -1 --ctx-checkpoints 2 
+    --checkpoint-every-n-tokens -1 --ctx-checkpoints 2
     --cache-ram 2048 --no-host
+    --metrics
+    --predict 32768
 
   "models_dir": "/media/simple/llm/models"
 
@@ -102,6 +115,13 @@ models:
   "qwen-27b":
     aliases: ["qwen", "qwen3.6-27b"]
     ttl: 86400
+    env:
+      # Preserve <think> blocks on all assistant turns so the rendered
+      # prompt matches the slot KV cache between turns. Without this,
+      # Qwen 3.6's default template drops historical thinking → Pattern B
+      # full re-prefill on every new user message. See
+      # triage/2026-05-16-prefix-invalidation.md.
+      - 'LLAMA_CHAT_TEMPLATE_KWARGS={"preserve_thinking":true}'
     cmd: |
       ${llama-server}
       -m ${models_dir}/Qwen3.6-27B/Qwen3.6-27B-UD-Q4_K_XL.gguf
@@ -167,12 +187,81 @@ models:
   "qwen-35b-moe":
     aliases: ["qwen-moe", "qwen3.6-moe"]
     ttl: 86400
+    env:
+      # Preserve <think> on all historical assistant turns — see
+      # triage/2026-05-16-prefix-invalidation.md for the cache-mismatch bug.
+      - 'LLAMA_CHAT_TEMPLATE_KWARGS={"preserve_thinking":true}'
     # Active quant: UD-Q5_K_XL (25 GB).
     # Fallback on disk: Qwen3.6-35B-A3B-MXFP4_MOE.gguf (21 GB).
     cmd: |
       ${llama-server}
       -m ${models_dir}/Qwen3.6-35B-A3B/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
       --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
+
+  # --- MTP-enabled Qwen3.6 entries (added 2026-05-16) ----------------------
+  #
+  # Qwen3.6's *-MTP-GGUF builds embed a Multi-Token Prediction head trained
+  # jointly with the main model. llama.cpp ≥ b9186 uses it as a draft model
+  # inside the same file via `--spec-type draft-mtp` (PR #22673, merged
+  # 2026-05-16). Reported gain: 1.4–2× tg/s at unchanged quality.
+  #
+  # Hard caveats from the PR:
+  #   - `--parallel 1` required (we already do this).
+  #   - Prompt-processing gets slightly slower (extra device↔host hops).
+  #   - Non-MTP GGUFs won't load with `--spec-type draft-mtp`.
+  #
+  # Sampler defaults below come from
+  # https://unsloth.ai/docs/models/qwen3.6#mtp-guide (thinking-mode,
+  # general). Override per-request from the client for coding work
+  # (temp 0.6, presence-penalty 0).
+  #
+  # `--spec-draft-n-max 3` is the PR's sweet spot (~75% acceptance,
+  # ~1.85–2× decode). Unsloth's example uses 6; measure on your prompts
+  # before raising it — acceptance falls off past 3 on most workloads.
+  #
+  # See llm/enable-mtp-for-qwen.md for setup + benchmarking notes.
+
+  # qwen-27b-mtp: same UD-Q4_K_XL quant as `qwen-27b`, MTP head loaded.
+  # ctx pinned at 65536: per lessons.md, qwen-27b at >65k tokens prefill
+  # exceeds hermes' chat-completion timeout on R9700/Vulkan, and MTP
+  # makes prefill *slightly* slower, not better.
+  "qwen-27b-mtp":
+    aliases: ["qwen-mtp", "qwen3.6-27b-mtp"]
+    ttl: 86400
+    env:
+      # Preserve <think> on all historical assistant turns — see
+      # triage/2026-05-16-prefix-invalidation.md for the cache-mismatch bug.
+      - 'LLAMA_CHAT_TEMPLATE_KWARGS={"preserve_thinking":true}'
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/Qwen3.6-27B-MTP/Qwen3.6-27B-UD-Q4_K_XL.gguf
+      --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
+      --spec-type draft-mtp --spec-draft-n-max 2
+      --temp 0.7 --top-p 0.95 --top-k 20 --min-p 0.0
+      # presence-penalty removed 2026-05-17: hypothesised to suppress EOS,
+      # contributing to the 48k-token runaway incident on this entry.
+
+  # qwen-35b-moe-mtp: same UD-Q4_K_XL quant as `qwen-35b-moe`, MTP head
+  # loaded. MoE active-params are small so MTP draft work is cheap;
+  # this is the entry most likely to show a big win.
+  "qwen-35b-moe-mtp":
+    aliases: ["qwen-moe-mtp", "qwen3.6-moe-mtp"]
+    ttl: 86400
+    env:
+      # Keep <think> blocks on ALL historical assistant turns so the
+      # rendered prompt matches the slot KV cache, eliminating Pattern B
+      # cache invalidation (triage/2026-05-16-prefix-invalidation.md).
+      # Qwen 3.6's default template drops <think> from any assistant
+      # turn older than the most recent user message; this kwarg flips
+      # that behaviour to preserve thinking unconditionally.
+      - 'LLAMA_CHAT_TEMPLATE_KWARGS={"preserve_thinking":true}'
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+      --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
+      --spec-type draft-mtp --spec-draft-n-max 2
+      --temp 0.7 --top-p 0.95 --top-k 20 --min-p 0.0
+      # presence-penalty removed 2026-05-17: see qwen-27b-mtp above.
 
   # --- Speculative decoding experiment (added 2026-05-08) -------------------
   #
@@ -209,7 +298,7 @@ models:
       -m ${models_dir}/gemma-4-31B-it/gemma-4-31B-it-UD-Q4_K_XL.gguf
       --model-draft ${models_dir}/gemma-4-E2B-it/gemma-4-E2B-it-Q8_0.gguf
       --no-mmap --ctx-size 65536 --parallel 1
-      --spec-draft-n-max 8 --spec-draft-n-min 0
+      --spec-draft-n-max 3 --spec-draft-n-min 0
       --n-gpu-layers-draft 999
       --cache-type-k-draft q8_0 --cache-type-v-draft q8_0
 
@@ -224,14 +313,6 @@ models:
       -m ${models_dir}/google_gemma-4-E4B-it-Q6_K_L.gguf
       -c 32768
 
-  "qwen-4b":
-    aliases: ["draft"]
-    ttl: 86400
-    cmd: |
-      ${llama-server}
-      -m ${models_dir}/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
-      -c 32768
-
 # One group, swap=true exclusive=true: only one model lives at a time across the
 # entire llama-swap instance. Hard guarantee against the dual-load scenario that
 # pushed the host to 25.4 GiB peak RSS on first run.
@@ -242,6 +323,8 @@ groups:
     members:
       - "gemma-31b"
       - "qwen-27b"
+      - "qwen-27b-mtp"
       - "gemma-26b-moe"
       - "qwen-35b-moe"
+      - "qwen-35b-moe-mtp"
       - "gemma-31b-spec"
