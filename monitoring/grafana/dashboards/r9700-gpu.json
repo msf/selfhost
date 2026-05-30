@@ -1,0 +1,207 @@
+{
+  "uid": "r9700-gpu",
+  "title": "R9700 GPU & LLM",
+  "tags": ["gpu", "llm", "amdgpu"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "type": "row",
+      "title": "R9700 — Utilization & Saturation",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU busy",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "amdgpu_gpu_busy_percent", "legendFormat": "busy" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "VRAM",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "amdgpu_vram_used_bytes", "legendFormat": "used" },
+        { "refId": "B", "expr": "amdgpu_vram_total_bytes", "legendFormat": "total" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Temperatures",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "celsius", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "amdgpu_temp_celsius", "legendFormat": "{{sensor}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Power (avg vs cap)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "watt", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "amdgpu_power_watts", "legendFormat": "power" },
+        { "refId": "B", "expr": "amdgpu_power_cap_watts", "legendFormat": "cap" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Fan",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 9 },
+      "fieldConfig": {
+        "defaults": { "min": 0 },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "pwm" },
+            "properties": [ { "id": "unit", "value": "percent" }, { "id": "max", "value": 100 } ] },
+          { "matcher": { "id": "byName", "options": "rpm" },
+            "properties": [ { "id": "unit", "value": "rotrpm" } ] }
+        ]
+      },
+      "targets": [
+        { "refId": "A", "expr": "amdgpu_fan_rpm", "legendFormat": "rpm" },
+        { "refId": "B", "expr": "amdgpu_fan_pwm_percent", "legendFormat": "pwm" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Clocks (MHz)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "none", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "amdgpu_sclk_mhz", "legendFormat": "sclk" },
+        { "refId": "B", "expr": "amdgpu_mclk_mhz", "legendFormat": "mclk" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Health",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 }
+    },
+    {
+      "type": "stat",
+      "title": "amdgpu up",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 18 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "targets": [ { "refId": "A", "expr": "amdgpu_up" } ]
+    },
+    {
+      "type": "stat",
+      "title": "GPU busy (now)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+      "targets": [ { "refId": "A", "expr": "amdgpu_gpu_busy_percent" } ]
+    },
+    {
+      "type": "stat",
+      "title": "Power (now)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "watt", "min": 0 }, "overrides": [] },
+      "targets": [ { "refId": "A", "expr": "amdgpu_power_watts" } ]
+    },
+    {
+      "type": "stat",
+      "title": "Junction temp (now)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 18 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 85 }, { "color": "red", "value": 100 } ] }
+        },
+        "overrides": []
+      },
+      "targets": [ { "refId": "A", "expr": "amdgpu_temp_celsius{sensor=\"junction\"}" } ]
+    },
+    {
+      "type": "row",
+      "title": "LLM (llama.cpp)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Decode tg/s",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "none", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "llm_tokens_per_second", "legendFormat": "{{model}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Prompt pp/s",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "none", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "llm_prompt_tokens_per_second", "legendFormat": "{{model}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests in flight",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "none", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "llm_requests_processing", "legendFormat": "{{model}} processing" },
+        { "refId": "B", "expr": "llm_requests_deferred", "legendFormat": "{{model}} deferred" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Context window (tokens)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 32 },
+      "options": { "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" } },
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "llm_ctx_size", "legendFormat": "{{model}}" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Loaded model",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 36 },
+      "options": { "textMode": "name", "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" } },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [ { "type": "value", "options": { "0": { "text": "loading", "color": "yellow" }, "1": { "text": "ready", "color": "green" } } } ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "yellow", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "llm_model_loaded", "legendFormat": "{{model}}" }
+      ]
+    }
+  ]
+}

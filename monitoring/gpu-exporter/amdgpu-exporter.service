@@ -1,0 +1,23 @@
+[Unit]
+Description=AMD GPU Prometheus exporter (R9700 sysfs -> :9101/metrics)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/srv/selfhost/monitoring/gpu-exporter/amdgpu-exporter -listen 127.0.0.1:9101
+Restart=on-failure
+RestartSec=5
+
+# Least privilege. Runs as a user service (matches llama-swap); sysfs is
+# world-readable so no root or device access is needed.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+
+[Install]
+WantedBy=default.target

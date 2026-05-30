@@ -12,3 +12,30 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:2019']
     metrics_path: /metrics
+
+  - job_name: 'llama-swap'
+    static_configs:
+      - targets: ['localhost:8090']
+    metrics_path: /metrics
+
+  # llama-server exposes per-model metrics at its dynamic port (startPort=9000).
+  # With exclusive=true only one model runs at a time; scraping the full range is
+  # harmless — vmagent skips refused/404 targets automatically.
+  - job_name: 'llama-server'
+    static_configs:
+      - targets:
+          - 'localhost:9000'
+          - 'localhost:9001'
+          - 'localhost:9002'
+          - 'localhost:9003'
+          - 'localhost:9004'
+          - 'localhost:9005'
+          - 'localhost:9006'
+          - 'localhost:9007'
+    metrics_path: /metrics
+
+  # R9700 GPU sensors (USE) from the host amdgpu-exporter (card0 only).
+  - job_name: 'amdgpu'
+    static_configs:
+      - targets: ['localhost:9101']
+    metrics_path: /metrics
