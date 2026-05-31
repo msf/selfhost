@@ -222,6 +222,7 @@ models:
   # See llm/enable-mtp-for-qwen.md for setup + benchmarking notes.
 
   # qwen-27b-mtp: same UD-Q4_K_XL quant as `qwen-27b`, MTP head loaded.
+  # Vision enabled via --mmproj (CLIP encoder, 885 MB).
   # ctx pinned at 65536: per lessons.md, qwen-27b at >65k tokens prefill
   # exceeds hermes' chat-completion timeout on R9700/Vulkan, and MTP
   # makes prefill *slightly* slower, not better.
@@ -235,6 +236,8 @@ models:
     cmd: |
       ${llama-server}
       -m ${models_dir}/Qwen3.6-27B-MTP/Qwen3.6-27B-UD-Q4_K_XL.gguf
+      --mmproj ${models_dir}/Qwen3.6-27B-MTP/mmproj-F16.gguf
+      --mmproj-offload
       --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
       --spec-type draft-mtp --spec-draft-n-max 2
       --temp 0.7 --top-p 0.95 --top-k 20 --min-p 0.0
