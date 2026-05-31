@@ -1,0 +1,15 @@
+[Unit]
+Description=R9700 undervolt + power cap (RDNA4 tuning)
+Documentation=file:/srv/selfhost/llm/tune_r9700.sh
+# Self-contained: no ordering against other services. The tuning applies live via sysfs
+# regardless of when the LLM server starts.
+ConditionPathExists=/sys/bus/pci/devices/0000:03:00.0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/srv/selfhost/llm/tune_r9700.sh on
+ExecStop=/srv/selfhost/llm/tune_r9700.sh off
+
+[Install]
+WantedBy=multi-user.target
