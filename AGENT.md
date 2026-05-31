@@ -1,39 +1,11 @@
-# Coding Policy
+# Agent notes
 
-Read README.md first - same rules apply to humans and agents.
+Same standards apply to humans and agents. Read README.md and DESIGN.md first.
 
-## Documentation
-- Two MD files max: DESIGN.md (what/why), README.md (how)
-- No per-component docs
-- Good code is self-documenting
+## Shell scripts
+- `set -euo pipefail`; check critical preconditions, fail loud with a clear message.
+- Success is silent: no progress chatter, no ASCII art — at most one outcome line.
 
-## Shell Scripts
-- Set -euo pipefail
-- Check critical preconditions, exit with clear error
-- Single outcome message at end
-- No progress output, no ASCII art
-- Success is silence, failure is loud
-
-## Forbidden
-- Tutorial-style guides
-- Per-service READMEs
-- Comments explaining what (code does that)
-- Echo/print for status updates
-- Redundant information
-
-## Example
-```bash
-# Bad
-echo "Starting deployment..."
-echo "Checking for key..."
-if [ ! -f "$KEY" ]; then
-    echo "ERROR: Key not found"
-    exit 1
-fi
-echo "✓ Key found"
-
-# Good
-set -euo pipefail
-[ -f "$KEY" ] || { echo "ERROR: Key not found"; exit 1; }
-```
-
+## Code & docs
+- Self-documenting code; comment only non-obvious *why*.
+- Don't add docs that restate code. Service-specific notes live in that service's dir.
