@@ -86,24 +86,22 @@ The iGPU stays free for desktop / VAAPI / Immich ML.
 
 See `llama-swap.yaml`. Defaults: `-fa on -ctk q8_0 -ctv q8_0` (flash-attn + KV
 quantized to q8 — required to fit large contexts in VRAM).
+Currently upper bound is around ~30B params, 128K context, quants: leaning on unsloth Q4_K_XL
 
-| Name             | Class            | Quant        | ctx     |
-|------------------|------------------|--------------|---------|
-| `gemma-31b`      | Gemma 4 31B dense| `UD-Q5_K_XL` | 131072  |
-| `qwen-27b`       | Qwen 3.6 27B dense| `UD-Q5_K_XL`| 131072  |
-| `gemma-26b-moe`  | Gemma 4 26B-A4B  | `MXFP4_MOE`  | 131072  |
-| `qwen-35b-moe`   | Qwen 3.6 35B-A3B | `MXFP4_MOE`  | 131072  |
-| `gemma-e4b`      | Gemma 4 E4B      | `Q6_K_L`     | 32768   |
-| `qwen-4b`        | Qwen3 4B         | `Q4_K_M`     | 32768   |
+Recently using Qwen w/ MTP (llama.cpp ≥ b9186, PR #22673). Setup + sampler params + caveats:
+[`enable-mtp-for-qwen.md`](enable-mtp-for-qwen.md).
 
-To push to 256K context: drop ctx-ladder profile or expect partial CPU offload
-via `--override-tensor` for dense ~22 GB models.
+To push to 256K context: both pp/sec, tg/sec and vram capacity are too low 
 
 ## TODO
 
-- Speculative decoding / MTP via draft model (gemma-e4b → gemma-31b, qwen-4b → qwen-27b) once the llama.cpp PR lands. Track upstream PRs.
 - Vision: `--mmproj` from each model's `mmproj-F16.gguf` (already on disk).
-- Caddy proxy at `llm.mfilipe.eu` (Tailscale-only).
+- Move llama.cpp install out of `~/.local/share/` so multiple users on
+  hopper can manage it (target: `/srv/selfhost/llm/llama.cpp/`).
+- grafana dashboards to track longer term: model-name, tg, pp, ctx-size, vram + ram usage.
+- create a weekly loop status report on the state of our local-llm system
+- More local A/B testing this setup and compare w/ fw13 and other machines.
+- new blogposts on deterministic tests for agentic performance
 
 ## Methodology lineage
 
