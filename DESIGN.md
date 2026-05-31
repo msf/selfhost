@@ -20,7 +20,7 @@ Internet:443 → Router → hopper:443 → Caddy (Docker)
                                       └→ graf.mfilipe.eu  → Grafana:3000 (docker) [TODO]
 
 LAN services:
-  Metrics: VictoriaMetrics, InfluxDB, Grafana (docker network)
+  Metrics: VictoriaMetrics, Grafana (docker network)
   Host metrics: Telegraf, vmagent (network_mode: host)
   IoT: Mosquitto, Zigbee2MQTT (network_mode: host)
   Sensors: inkbird-monitor (systemd)
@@ -41,7 +41,6 @@ LAN services:
 | Immich | img.mfilipe.eu | Docker | 1000:1000 |
 | Grafana | graf.mfilipe.eu [TODO] | Docker | monitoring network |
 | VictoriaMetrics | - | Docker | monitoring network |
-| InfluxDB | - | Docker | monitoring network |
 | Telegraf | - | Docker | network_mode: host |
 | vmagent | - | Docker | network_mode: host |
 | Mosquitto | - | Docker | network_mode: host |
@@ -58,7 +57,7 @@ LAN services:
 /media/simple/immich/           # ZFS dataset (compression=off)
 /media/simple/videos/           # Jellyfin media
 /media/simple/victoriametrics/  # Time-series data
-/media/simple/influxdb/         # Legacy metrics [TODO: migrate]
+/media/simple/influxdb/         # Archived (can remove after 2026-06-30)
 /media/simple/grafana/          # Dashboards & datasources
 /media/simple/zigbee2mqtt/      # Zigbee coordinator data
 ```
