@@ -83,7 +83,7 @@
 	@blog host blog.mfilipe.eu
 	handle @blog {
 		import security
-		root * /srv/selfhost/blog/public
+		root * /srv/selfhost/blog/site
 		file_server
 		encode gzip
 	}

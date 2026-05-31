@@ -18,3 +18,7 @@ ddns/ddns
 *.swp
 *.tmp
 .DS_Store
+
+# Foreign git repos checked out in-tree (not part of selfhost)
+hermes/
+kostal2influx-review/
