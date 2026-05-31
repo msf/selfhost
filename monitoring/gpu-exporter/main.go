@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const r9700DeviceID = "0x7551"
@@ -261,10 +262,24 @@ func main() {
 		return
 	}
 
+	// LLM metrics come from a background poller so the handler never blocks on
+	// llama-server's synchronous endpoints (see llmCache). GPU sysfs collect is
+	// ~5ms, so it stays inline and always fresh.
+	var llm llmCache
+	if *swapBase != "" {
+		go llm.poll(*swapBase, 2*time.Second)
+	}
+
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		m := c.collect()
 		if *swapBase != "" {
-			m = append(m, collectLLM(*swapBase)...)
+			cached, last := llm.get()
+			m = append(m, cached...)
+			up := 0.0
+			if !last.IsZero() && time.Since(last) < 15*time.Second {
+				up = 1
+			}
+			m = append(m, metric{"llm_up", "1 if LLM metrics were refreshed recently (poller alive)", "gauge", "", up})
 		}
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 		fmt.Fprint(w, render(m))
