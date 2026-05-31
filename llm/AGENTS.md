@@ -3,7 +3,10 @@
 Conventions and entry points for any agent (Claude, hermes, etc.) doing
 troubleshooting, sizing, or making changes to the LLM stack on hopper.
 
-For day-to-day human ops (model config, common commands), see `README.md`.
+- **Triaging a live issue?** Read `RUNBOOK.md` first — symptom → fix table,
+  health-check sequence, common operations.
+- **Day-to-day human ops** (model config, common commands): see `README.md`.
+- This file: config layout, log locations, sizing conventions, change rules.
 
 ## Where the logs are
 
@@ -48,6 +51,7 @@ llama-swap; the default `SystemMaxUse=10% of /var` (~6.7 GiB) covers
 ├── AGENTS.md              ← this file
 ├── llama-swap.yaml        ← model definitions (source of truth)
 ├── llama-swap.service     ← systemd --user unit (port 8090)
+├── enable-mtp-for-qwen.md ← MTP setup notes + sampler params + caveats
 ├── zfs-arc.conf           ← /etc/modprobe.d/zfs.conf staged content
 ├── install.sh, update.sh, bench.sh, download-models.sh
 ├── triage/                ← incident docs + diagnostic scripts
@@ -142,21 +146,24 @@ Header reprints every 50 rows.
    gpt-oss can spiral inside one `<think>` block until they hit ctx).
    Documented in lessons.md.
 
+## Active features
+
+- **MTP for Qwen 3.6** (since 2026-05-16). PR #22673 merged on
+  llama.cpp b9186; the flag is **`--spec-type draft-mtp`** (note: not
+  `--spec-type mtp` as in the original PR draft — renamed pre-merge on
+  2026-05-13). Available on the `qwen-27b-mtp` and `qwen-35b-moe-mtp`
+  llama-swap entries; the non-MTP counterparts stay around for A/B.
+  Hard constraint from upstream: `--parallel 1` is mandatory; we
+  already set that everywhere. Prefill is slightly slower, decode is
+  ~1.85–2× faster at ~75–93% draft acceptance on our smoke tests.
+  Full setup notes + sampler params: see `enable-mtp-for-qwen.md`.
+
 ## Future work to track
 
-- **Speculative decoding / MTP for Qwen 3.6**. Two upstream PRs (both not
-  merged as of 2026-05-07):
-  - <https://github.com/ggml-org/llama.cpp/pull/22546> — "spec: allow
-    multiple spec types (chains of speculators)". Architecture-agnostic.
-    Lets you combine n-gram cache + draft model + MTP and pick best at
-    runtime.
-  - <https://github.com/ggml-org/llama.cpp/pull/22673> — "llama + spec:
-    MTP Support". Multi-Token Prediction targeted at **Qwen 3.6 27B**
-    and **Qwen 3.6 35B-A3B** specifically (our models). 1.5–2× gen
-    speedup, ~75% draft acceptance, <10% memory overhead, opt-in via
-    `--spec-type mtp`. Vulkan support in progress.
-  When either lands in a release we pull, evaluate and benchmark on
-  the R9700.
+- **Multi-spec chains** (<https://github.com/ggml-org/llama.cpp/pull/22546>) —
+  "spec: allow multiple spec types (chains of speculators)". Lets you
+  combine n-gram cache + draft model + MTP and pick best at runtime.
+  Not yet merged as of 2026-05-16.
 
 ## Conventions
 
