@@ -16,7 +16,18 @@ services:
     networks:
       - monitoring
 
-  # influxdb: removed 2026-05-31 — migrated to VictoriaMetrics
+  influxdb:
+    image: quay.io/influxdb/influxdb:2.1.1
+    container_name: influxdb
+    volumes:
+      - /media/simple/influxdb:/root/.influxdbv2
+    ports:
+      - 8086:8086
+      - 8083:8083
+    networks:
+      - monitoring
+    restart: unless-stopped
+    # TODO: Migrate kostal2influx to VictoriaMetrics, then consider removing InfluxDB
 
   grafana:
     image: grafana/grafana-oss:10.4.1
@@ -33,7 +44,7 @@ services:
       - /media/simple/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
     networks:
       - monitoring
- # grafana: exposed as graf.mfilipe.eu via Caddy when ready
+    # TODO: After strong password set, expose as graf.mfilipe.eu via Caddy
 
 networks:
   monitoring:

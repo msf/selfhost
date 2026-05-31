@@ -6,7 +6,8 @@ Metrics collection, storage, and visualization.
 
 **Main stack** (docker-compose.yml):
 - **VictoriaMetrics** - Time-series database (port 8428, 8089)
-- **Grafana** - Visualization (port 3000)
+- **InfluxDB** - Legacy metrics (port 8086) - TODO: Migrate to VictoriaMetrics
+- **Grafana** - Visualization (port 3000) - TODO: Expose as graf.mfilipe.eu after password set
 
 **Host-network services** (separate composes):
 - **Telegraf** - System metrics collection
@@ -27,26 +28,21 @@ cd ../vmagent && docker compose up -d
 
 ## Configuration
 
-Create `.env` file:
+Create `env` file:
 ```bash
-cp env.example .env
-# Edit .env: Set strong GRAFANA_PASSWORD
+cp env.example env
+# Edit env: Set strong GRAFANA_PASSWORD
 ```
 
 ## Storage
 
 - VictoriaMetrics: `/media/simple/victoriametrics`
+- InfluxDB: `/media/simple/influxdb`
 - Grafana: `/media/simple/grafana`
-- Legacy InfluxDB: `/media/simple/influxdb` (archived, can be removed after 30 days)
-
-## Migration Notes
-
-- **2026-05-31:** Migrated InfluxDB → VictoriaMetrics. Telegraf writes only to VM.
-  kostal2influx compiled as static binary, runs on x99 → writes to VM via Tailscale.
-- InfluxDB container removed from docker-compose. Data archived at `/media/simple/influxdb/`.
 
 ## TODO
 
+- [ ] Migrate kostal2influx to VictoriaMetrics
+- [ ] Set strong Grafana password
 - [ ] Expose graf.mfilipe.eu via Caddy
-- [ ] Set up systemd service for kostal2influx on x99
-- [ ] Remove `/media/simple/influxdb/` after 30-day grace period (2026-06-30)
+- [ ] Remove InfluxDB after migration complete
