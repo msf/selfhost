@@ -12,14 +12,49 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
-// 4s: llama-server serves /metrics synchronously, so under heavy inference
-// (hermes mid-request) a 2s timeout intermittently dropped the rate metrics,
-// punching gaps in the graph. 4s rides out a busy slot while staying under
-// vmagent's scrape window.
-var httpClient = &http.Client{Timeout: 4 * time.Second}
+// 2s: llama-server serves /metrics and /slots synchronously on its inference
+// loop, so during a prefill batch they block for seconds. We no longer scrape
+// them from the /metrics handler (see llmCache); a background poller absorbs
+// the latency, so a timed-out poll just keeps the last-good values instead of
+// punching a gap. 2s is enough to ride out a yield between decode batches.
+var httpClient = &http.Client{Timeout: 2 * time.Second}
+
+// llmCache decouples serving from scraping. The /metrics handler must never
+// call collectLLM directly: llama-server's synchronous endpoints would block
+// it during prefill, blow past vmagent's scrape timeout, and drop the whole
+// sample (GPU metrics included). Instead a single background poller refreshes
+// this cache and the handler serves the last snapshot instantly.
+type llmCache struct {
+	mu       sync.RWMutex
+	metrics  []metric
+	lastPoll time.Time
+}
+
+func (c *llmCache) get() ([]metric, time.Time) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.metrics, c.lastPoll
+}
+
+func (c *llmCache) set(m []metric) {
+	c.mu.Lock()
+	c.metrics, c.lastPoll = m, time.Now()
+	c.mu.Unlock()
+}
+
+// poll refreshes the cache forever. collectLLM is bounded by httpClient's
+// timeout, so the effective cadence is interval + up to a couple seconds of
+// upstream latency — well within the staleness window the handler checks.
+func (c *llmCache) poll(swapBase string, interval time.Duration) {
+	for {
+		c.set(collectLLM(swapBase))
+		time.Sleep(interval)
+	}
+}
 
 type runningResp struct {
 	Running []struct {
