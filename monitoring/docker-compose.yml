@@ -16,18 +16,7 @@ services:
     networks:
       - monitoring
 
-  influxdb:
-    image: quay.io/influxdb/influxdb:2.1.1
-    container_name: influxdb
-    volumes:
-      - /media/simple/influxdb:/root/.influxdbv2
-    ports:
-      - 8086:8086
-      - 8083:8083
-    networks:
-      - monitoring
-    restart: unless-stopped
-    # TODO: Migrate kostal2influx to VictoriaMetrics, then consider removing InfluxDB
+  #influxdb is no longer used, migrated out of it.
 
   grafana:
     image: grafana/grafana-oss:10.4.1
