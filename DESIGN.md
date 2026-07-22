@@ -24,7 +24,6 @@ LAN services:
   Host metrics: Telegraf, vmagent (network_mode: host)
   IoT: Mosquitto, Zigbee2MQTT (network_mode: host)
   Sensors: inkbird-monitor (systemd)
-  OpenClaw: LXC container at 10.250.85.62 (isolated, NAT outbound)
 ```
 
 ## Security Layers
@@ -47,7 +46,6 @@ LAN services:
 | Mosquitto | - | Docker | network_mode: host |
 | Zigbee2MQTT | - | Docker | network_mode: host |
 | inkbird-monitor | - | systemd | nobody |
-| OpenClaw | LAN:18789 | LXC | openclaw user |
 | DDNS | - | systemd timer | nobody:nogroup |
 | fail2ban | - | systemd | root |
 
@@ -74,5 +72,4 @@ LAN services:
 - **Wildcard cert**: Single Let's Encrypt cert for all subdomains
 - **ZFS compression off for media**: Already compressed (photos/video)
 - **ZFS compression on for DB**: Postgres/metrics benefit from zstd-fast
-- **LXC for OpenClaw**: Lightweight container, isolated network with NAT
 - **network_mode: host for metrics/IoT**: Required for localhost scraping and MQTT
