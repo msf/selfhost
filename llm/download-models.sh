@@ -11,6 +11,9 @@ ITEMS=(
   "unsloth/gemma-4-31B-it-GGUF|gemma-4-31B-it|gemma-4-31B-it-UD-Q5_K_XL.gguf"
   "unsloth/gemma-4-31B-it-GGUF|gemma-4-31B-it|gemma-4-31B-it-UD-Q4_K_XL.gguf"
   "unsloth/gemma-4-31B-it-GGUF|gemma-4-31B-it|mmproj-F16.gguf"
+  # QAT variant (added 2026-06-07): quantization-aware trained 4-bit.
+  # 17.3 GB vs 18.8 GB PTQ. Near-BF16 quality at 4-bit footprint.
+  "unsloth/gemma-4-31B-it-qat-GGUF|gemma-4-31B-it-qat|gemma-4-31B-it-qat-UD-Q4_K_XL.gguf"
   "unsloth/Qwen3.6-27B-GGUF|Qwen3.6-27B|Qwen3.6-27B-UD-Q5_K_XL.gguf"
   "unsloth/Qwen3.6-27B-GGUF|Qwen3.6-27B|Qwen3.6-27B-UD-Q4_K_XL.gguf"
   "unsloth/Qwen3.6-27B-GGUF|Qwen3.6-27B|mmproj-F16.gguf"

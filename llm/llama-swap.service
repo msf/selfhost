@@ -7,7 +7,7 @@ Type=simple
 # Pin GPU to R9700 (Vulkan device index 1 → becomes 0 once filtered).
 Environment=GGML_VK_VISIBLE_DEVICES=1
 # llama.cpp runtime libs for the spawned llama-server children.
-Environment=LD_LIBRARY_PATH=%h/.local/share/llama.cpp/current
+Environment=LD_LIBRARY_PATH=/srv/selfhost/llm/llama.cpp/current
 # Force pure VRAM allocation. Two env vars are needed; the first alone is
 # NOT sufficient on RDNA3/4 + RADV.
 #
@@ -29,7 +29,7 @@ Environment=GGML_VK_MEMORY_LOGGER=1
 # model otherwise migrates VRAM→GTT after ~minutes of system pressure,
 # observed on 2026-05-07).
 Environment=GGML_VK_ENABLE_MEMORY_PRIORITY=1
-ExecStart=%h/.local/share/llama-swap/current/llama-swap \
+ExecStart=/srv/selfhost/llm/llama-swap/current/llama-swap \
     -config /srv/selfhost/llm/llama-swap.yaml \
     -listen 0.0.0.0:8090 \
     -watch-config

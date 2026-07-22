@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT=$HOME/.local/share/llama.cpp
+ROOT=/srv/selfhost/llm/llama.cpp
 REPO=ggml-org/llama.cpp
 ASSET=ubuntu-vulkan-x64
 RESTART=${1:-restart}

@@ -22,9 +22,9 @@ MODEL_FILE="$MODELS/Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
 
 UNIT_DIR=$HOME/.config/systemd/user
 mkdir -p "$UNIT_DIR"
-ln -sf /srv/selfhost/llm/llama-server.service "$UNIT_DIR/llama-server.service"
+ln -sf /srv/selfhost/llm/llama-swap.service "$UNIT_DIR/llama-swap.service"
 systemctl --user daemon-reload
-systemctl --user enable --now llama-server.service
+systemctl --user enable --now llama-swap.service
 
-echo "llama-server installed (user). test: curl -s http://127.0.0.1:8090/v1/models"
+echo "llama-swap installed (user). test: curl -s http://127.0.0.1:8090/v1/models"
 echo "for autostart at boot without login: sudo loginctl enable-linger $USER  (one-time, optional)"

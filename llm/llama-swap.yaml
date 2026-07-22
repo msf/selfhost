@@ -51,12 +51,12 @@ macros:
   # of the 48k runaway scale. This is a DEFAULT, not a hard cap — a client
   # that explicitly sends max_tokens > 32768 still wins.
   "llama-server": >
-    /home/miguel/.local/share/llama.cpp/current/llama-server
+    /srv/selfhost/llm/llama.cpp/current/llama-server
     --host 127.0.0.1 --port ${PORT}
     -ngl 999 -t 12 --perf
     -fa on -sm none -mg 0
     -ctk q8_0 -ctv q8_0
-    --checkpoint-every-n-tokens -1 --ctx-checkpoints 2
+    --ctx-checkpoints 0
     --cache-ram 2048 --no-host
     --metrics
     --predict 32768
@@ -74,13 +74,14 @@ models:
   # After that restart, these per-model env blocks are redundant and can be
   # removed (the env propagates llama-swap → llama-server children).
 
+  # --- Gemma 4 31B PTQ (regular post-training quant) -------------------------
   # VRAM forecast (q8 KV, 1.5 GiB compute scratch budget; R9700 = 32 GiB):
   #   gemma-31b @ 131k → wts 20.4 + KV 5.8 + cmp 1.5 = ~27.7 GiB ✓ 4 GiB margin
   #   gemma-31b @ 180k → wts 20.4 + KV 7.6 + cmp 1.5 = ~29.5 GiB ✓ 2.5 GiB margin
   # Gemma 4 has interleaved local/global attention (swa=1024); only ~1/6 of
   # layers scale with ctx, so KV grows sub-linearly.
   "gemma-31b":
-    aliases: ["gemma4", "gemma"]
+    aliases: ["gemma4-ptq", "gemma-ptq"]
     ttl: 86400
     # SWA prompt-cache checkpoints fully DISABLED (`-cpent -1
     # --ctx-checkpoints 0 --cache-ram 0`). Default behaviour creates a
@@ -96,6 +97,21 @@ models:
     cmd: |
       ${llama-server}
       -m ${models_dir}/gemma-4-31B-it/gemma-4-31B-it-UD-Q4_K_XL.gguf
+      --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
+
+  # --- Gemma 4 31B QAT (quantization-aware training) -------------------------
+  # Trained with simulated 4-bit noise during training → near-BF16 quality at
+  # 4-bit footprint. 17.3 GB vs 18.8 GB PTQ. Unsloth UD-Q4_K_XL achieves
+  # 96.67% top-1 accuracy vs BF16 QAT checkpoint (99.96% byte-exactness).
+  # QAT 4-bit quality ≈ PTQ Q6-K quality while 30% smaller on disk.
+  # VRAM forecast: ~3 GiB less weights than PTQ Q5, similar to PTQ Q4.
+  "gemma-31b-qat":
+    aliases: ["gemma4", "gemma", "gemma4-qat", "gemma-qat"]
+    ttl: 86400
+    # SWA prompt-cache checkpoints fully DISABLED. Same reasoning as gemma-31b.
+    cmd: |
+      ${llama-server}
+      -m ${models_dir}/gemma-4-31B-it-qat/gemma-4-31B-it-qat-UD-Q4_K_XL.gguf
       --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
 
   # qwen-27b — uniform attention, no SWA, 64 layers; KV-heavy.
@@ -239,7 +255,7 @@ models:
       --mmproj ${models_dir}/Qwen3.6-27B-MTP/mmproj-F16.gguf
       --mmproj-offload
       --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
-      --spec-type draft-mtp --spec-draft-n-max 2
+      --spec-type draft-mtp --spec-draft-n-max 3
       --temp 0.7 --top-p 0.95 --top-k 20 --min-p 0.0
       # presence-penalty removed 2026-05-17: hypothesised to suppress EOS,
       # contributing to the 48k-token runaway incident on this entry.
@@ -262,7 +278,7 @@ models:
       ${llama-server}
       -m ${models_dir}/Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
       --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
-      --spec-type draft-mtp --spec-draft-n-max 2
+      --spec-type draft-mtp --spec-draft-n-max 3
       --temp 0.7 --top-p 0.95 --top-k 20 --min-p 0.0
       # presence-penalty removed 2026-05-17: see qwen-27b-mtp above.
 
@@ -325,6 +341,7 @@ groups:
     exclusive: true
     members:
       - "gemma-31b"
+      - "gemma-31b-qat"
       - "qwen-27b"
       - "qwen-27b-mtp"
       - "gemma-26b-moe"

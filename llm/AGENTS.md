@@ -43,6 +43,19 @@ tmpfs). Logs survive reboots. Volume so far is ~65 KiB/day for
 llama-swap; the default `SystemMaxUse=10% of /var` (~6.7 GiB) covers
 ≥1 year of logs comfortably. No explicit retention has been configured.
 
+## Shared binary locations (multi-user)
+
+Both `miguel` and `bolotas` can manage these via `adm` group (setgid 2775):
+
+```
+/srv/selfhost/llm/llama.cpp/current    → latest llama.cpp release (b9189+)
+/srv/selfhost/llm/llama-swap/current   → v211
+```
+
+**Update llama.cpp:** `bash /srv/selfhost/llm/update.sh` (downloads + symlinks)
+**Switch version:** `ln -sfn /srv/selfhost/llm/llama.cpp/llama-XXXX /srv/selfhost/llm/llama.cpp/current` + restart service
+**Update llama-swap:** download from <https://github.com/pmb659/llama-swap/releases>
+
 ## Where the configuration lives
 
 ```
@@ -157,6 +170,26 @@ Header reprints every 50 rows.
   already set that everywhere. Prefill is slightly slower, decode is
   ~1.85–2× faster at ~75–93% draft acceptance on our smoke tests.
   Full setup notes + sampler params: see `enable-mtp-for-qwen.md`.
+
+- **New in b9910+**: `--spec-draft-backend-sampling` (on by default) —
+  offloads draft token sampling to GPU backend instead of CPU.
+  Potential MTP decode speedup.
+
+- **New in b10000+**: `--spec-type draft-dflash` — Flash-decoding draft
+  speculative type. Worth testing against `draft-mtp` for Qwen 3.6.
+
+## llama.cpp upgrade notes
+
+Currently on b9189. b10025 downloaded and ready at
+`/srv/selfhost/llm/llama.cpp/llama-b10025/`. Key changes:
+
+- `--spec-draft-n-max` default: 16→3 (we override to 5, unaffected)
+- `--spec-draft-p-min` default: 0.75→0.00 (less greedy)
+- Draft model fit fix (b9910) — MTP stability
+- Prompt cache RAM hard limit (b9908)
+- Prompt cache refactor (b10011)
+
+See wiki: `/srv/selfhost/wiki/llm/todos/llm-stack-todos.md`
 
 ## Future work to track
 

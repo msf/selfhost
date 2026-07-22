@@ -95,7 +95,7 @@ To push to 256K context: both pp/sec, tg/sec and vram capacity are too low
 
 ## TODO
 
-- Vision: `--mmproj` from each model's `mmproj-F16.gguf` (already on disk).
+- ~~Vision: `--mmproj` from each model's `mmproj-F16.gguf`~~ ✅ Done 2026-06-01 — wired on `qwen-27b-mtp`, Hermes config set to `image_input_mode: native`.
 - Move llama.cpp install out of `~/.local/share/` so multiple users on
   hopper can manage it (target: `/srv/selfhost/llm/llama.cpp/`).
 - grafana dashboards to track longer term: model-name, tg, pp, ctx-size, vram + ram usage.
