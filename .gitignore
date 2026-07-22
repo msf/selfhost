@@ -22,3 +22,15 @@ ddns/ddns
 # Foreign git repos checked out in-tree (not part of selfhost)
 hermes/
 kostal2influx-review/
+
+# Runtime data & local state — kept out of git, not deleted
+.claude/
+**/data/
+*.db
+# Hugo static output (source not in tree); served by Caddy
+blog/site/
+# container leftovers; jellyfin runs as deb/systemd
+jellyfin/cache/
+jellyfin/config/
+# personal KB — deliberately out of source control for now
+wiki/
