@@ -177,6 +177,7 @@ func (c card) collect() []metric {
 	}
 
 	add("amdgpu_up", "1 if the amdgpu device is readable", "gauge", "", up, true)
+	add("amdgpu_temp_mem_stall_kicks_total", "GPU kicks fired to re-arm a hung GDDR temp sensor", "counter", "", float64(memStallKicks.Load()), true)
 	return out
 }
 
@@ -268,6 +269,7 @@ func main() {
 	var llm llmCache
 	if *swapBase != "" {
 		go llm.poll(*swapBase, 2*time.Second)
+		go c.watchMemTempStall(*swapBase) // re-arm the GDDR temp sensor when the SMU read hangs
 	}
 
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
