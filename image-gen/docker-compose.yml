@@ -1,0 +1,52 @@
+services:
+  sd-server:
+    build:
+      context: .
+    image: selfhost/image-gen:sdcpp-vulkan
+    container_name: image-gen
+    # Deliberately NOT unless-stopped: while up, this holds 14.40 GiB of the
+    # card's 31.86 GiB and llama-swap cannot load any LLM, so hermes breaks.
+    # Start it on demand and stop it when done, until it is registered as a
+    # member of llama-swap's exclusive `groups.all`.
+    restart: "no"
+    # 44=video, 105=render on hopper. The debian base image has no such groups,
+    # so they must be numeric.
+    group_add: ["44", "105"]
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /media/simple/llm/image-gen:/models:ro
+      - ./out:/out
+    ports:
+      - "127.0.0.1:1234:1234"
+    # sd.cpp's parser takes space-separated values only; --flag=value is rejected.
+    command:
+      - --listen-ip
+      - 0.0.0.0
+      - --listen-port
+      - "1234"
+      - --diffusion-model
+      - /models/chroma1-hd-Q8_0.gguf
+      # Q8 rather than fp16: measured 2026-08-03 at 512x512/26 steps, the two are
+      # indistinguishable in time (17.75s vs 17.83s) but Q8 holds 14.40 GiB
+      # instead of 18.56 GiB and halves the cold start (26.8s vs 44.4s), because
+      # there is less to read from disk. 4.16 GiB back for free.
+      - --t5xxl
+      - /models/t5xxl-Q8_0.gguf
+      - --vae
+      - /models/ae.safetensors
+      # Untiled VAE decode at 1024x1024 asks for a single 7.96 GiB buffer and
+      # fails even with the card otherwise empty.
+      - --vae-tiling
+      - --model-args
+      - chroma_use_dit_mask=false
+      # Speed knobs, measured 2026-08-03 at 1024x1024/26 steps: together 1.75x
+      # (217.34s -> 124.12s) with no visible quality change at 512x512.
+      # Raising the easycache threshold past 0.25 buys nothing (0.40 -> 123.82s).
+      # Rejected: --steps 10 and --cfg-scale 1.0 are faster but visibly wreck
+      # output on a de-distilled model like Chroma.
+      - --diffusion-fa
+      - --cache-mode
+      - easycache
+      - --cache-option
+      - threshold=0.25

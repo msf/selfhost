@@ -34,3 +34,5 @@ jellyfin/cache/
 jellyfin/config/
 # personal KB — deliberately out of source control for now
 wiki/
+# generated images
+image-gen/out/
