@@ -1,0 +1,9 @@
+===== REASONING =====
+The user wants a one-sentence summary of the changes made to fix the bug.
+The bug was a division by zero in the resize/letterbox logic when handling masks with zero width or height.
+The fix added bounds checks to prevent division by zero and handled degenerate cases gracefully.
+I need to summarize this in exactly one sentence.
+
+
+===== CONTENT =====
+Added bounds checks to the resize and letterbox logic to prevent division by zero when processing masks with zero width or height.

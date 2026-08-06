@@ -36,3 +36,4 @@ jellyfin/config/
 wiki/
 # generated images
 image-gen/out/
+__pycache__/

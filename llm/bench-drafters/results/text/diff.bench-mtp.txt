@@ -1,0 +1,78 @@
+===== REASONING =====
+The user wants a minimal unified diff to fix a bug in the letterbox/resize handling.
+I previously identified a potential division by zero or aspect ratio issue in the resize helper when handling masks, but looking at the code provided:
+`resize_crop_mask` uses `scale_x` and `scale_y` computed from `crop.x2 - crop.x1` and `crop.y2 - crop.y1`.
+If `crop.x2 == crop.x1` or `crop.y2 == crop.y1`, division by zero occurs.
+Wait, `mask_bbox` returns `false` if `x2 <= x1 || y2 <= y1`, so `crop` should be valid.
+Let's look at `make_letterbox_input`:
+```cpp
+static LetterboxInput make_letterbox_input(sd_image_t image, int input_size) {
+    LetterboxInput result;
+    result.tensor      = sd::full<float>({input_size, input_size, 3, 1}, 114.f / 255.f);
+    result.scale       = std::min(static_cast<float>(input_size) / image.width,
+                                  static_cast<float>(input_size) / image.height);
+    int resized_width  = std::max(1, static_cast<int>(std::round(image.width * result.scale)));
+    int resized_height = std::max(1, static_cast<int>(std::round(image.height * result.scale)));
+    result.pad_x       = (input_size - resized_width) / 2;
+    result.pad_y       = (input_size - resized_height) / 2;
+    ...
+```
+Wait, `result.scale` is computed correctly.
+But look at `decode_detections`:
+```cpp
+            detection.x1         = (center_x - left * stride - letterbox.pad_x) / letterbox.scale;
+            detection.y1         = (center_y - top * stride - letterbox.pad_y) / letterbox.scale;
+            detection.x2         = (center_x + right * stride - letterbox.pad_x) / letterbox.scale;
+            detection.y2         = (center_y + bottom * stride - letterbox.pad_y) / letterbox.scale;
+```
+If `letterbox.scale` is 0, division by zero. But `image.width` and `image.height` are checked in `image_channel`, but not here. If `image.width` or `image.height` is 0, `result.scale` becomes infinity or NaN? Actually `input_size / 0` is inf. `std::min(inf, inf)` is inf. `image.width * inf` is inf. `std::round(inf)` is inf. Cast to int is undefined or huge.
+But the prompt says "most likely latent bug in the letterbox/resize handling".
+Let's look at `resize_crop_image` and `resize_crop_mask`.
+```cpp
+static sd_image_t resize_crop_image(const sd_image_t& source, const CropRegion& crop, int width, int height) {
+    ...
+    float scale_x = static_cast<float>(crop.x2 - crop.x1) / width;
+    float scale_y = static_cast<float>(crop.y2 - crop.y1) / height;
+    ...
+```
+If `width` or `height` is 0, division by zero. But `params.inpaint_width` and `params.inpaint_height` are validated to be `> 0`.
+
+Wait, look at `make_letterbox_input` again:
+```cpp
+    result.scale       = std::min(static_cast<float>(input_size) / image.width,
+                                  static_cast<float>(input_size) / image.height);
+```
+If `image.width` or `image.height` is 0, this divides by zero. But `image_channel` checks for 0. `make_letterbox_input` doesn't.
+But the prompt says "latent bug in the letterbox/resize handling".
+Another possibility: `result.pad_x` and `result.pad_y` calculation.
+```cpp
+    result.pad_x       = (input_size - resized_width) / 2;
+    result.pad_y       = (input_size - resized_height) / 2;
+```
+This is fine.
+
+Let's look at `decode_detections` coordinate transformation:
+```cpp
+            detection.x1         = (center_x - left * stride - letterbox.pad_x) / letterbox.scale;
+```
+Actually, the standard letterbox transform for YOLOv8 is:
+`x = (x_grid * stride - pad_x) / scale`
+But here it's `(center_x - left * stride - letterbox.pad_x) / letterbox.scale`.
+`center_x = (grid_x + 0.5f) * stride`.
+So `center_x - left
+
+===== CONTENT =====
+```diff
+--- a/src/detailer.cpp
++++ b/src/detailer.cpp
+@@ -138,6 +138,10 @@ static float bilinear_channel(const sd_image_t& image, float x, float y, int cha
+ }
+ 
+ static LetterboxInput make_letterbox_input(sd_image_t image, int input_size) {
++    if (image.width == 0 || image.height == 0) {
++        return {};
++    }
+     LetterboxInput result;
+     result.tensor      = sd::full<float>({input_size, input_size, 3, 1}, 114.f / 255.f);
+     result.scale       = std::min(static_cast<float>(input_size) / image.width,
+```

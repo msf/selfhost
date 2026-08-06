@@ -1,0 +1,13 @@
+===== REASONING =====
+The user wants a one-sentence summary of the changes made to fix the bug.
+The bug was a division by zero when resizing a crop with zero width or height.
+The fix added checks for `width <= 0` or `height <= 0` before dividing.
+I need to summarize this concisely.
+
+Draft: Added bounds checks to prevent division by zero when resizing crops with zero width or height.
+Refinement: Added width and height bounds checks to prevent division by zero during crop resizing.
+Final Polish: Added width and height bounds checks to prevent division by zero during crop resizing.
+
+
+===== CONTENT =====
+Added width and height bounds checks to prevent division by zero during crop resizing.

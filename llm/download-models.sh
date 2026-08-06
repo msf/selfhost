@@ -39,6 +39,17 @@ ITEMS=(
   # Smaller quant of gemma-31b for spec-decoding (added 2026-05-08): Q4 frees
   # ~3 GiB vs Q5_K_XL → more VRAM for ctx + draft model. Same family as our
   # existing Q5_K_XL.
+  #
+  # Alternative drafters for Qwen3.6-27B (added 2026-08-06) — see
+  # wiki [[spec-drafter-agentic-bench]]. Unlike MTP, these are SEPARATE small
+  # draft models passed via --spec-draft-model, paired with the stock
+  # Qwen3.6-27B target we already have. Two quants each: the high-precision
+  # pair ranks the methods without confounding on draft precision, the small
+  # pair ranks what we would actually deploy.
+  "Alittlehammmer/Qwen3.6-27B-DFlash-GGUF-llama.cpp|Qwen3.6-27B-DFlash|Qwen3.6-27B-DFlash-BF16.gguf"
+  "Alittlehammmer/Qwen3.6-27B-DFlash-GGUF-llama.cpp|Qwen3.6-27B-DFlash|Qwen3.6-27B-DFlash-Q8_0.gguf"
+  "gelim/Qwen3.6-27B-PRISM-EAGLE3-GGUF|Qwen3.6-27B-PRISM-EAGLE3|Qwen3.6-27B-PRISM-EAGLE3.gguf"
+  "gelim/Qwen3.6-27B-PRISM-EAGLE3-GGUF|Qwen3.6-27B-PRISM-EAGLE3|Qwen3.6-27B-PRISM-EAGLE3_Q4_K_M.gguf"
 )
 
 for item in "${ITEMS[@]}"; do

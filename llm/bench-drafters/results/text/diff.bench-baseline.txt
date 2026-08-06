@@ -1,0 +1,77 @@
+===== REASONING =====
+The user wants a minimal unified diff to fix a bug in the letterbox/resize handling.
+I previously identified a potential division by zero or aspect ratio issue when resizing masks or images, specifically mentioning "zero-height mask silently divides by zero in the resize helper" and "letterbox scaling path recomputes the aspect ratio after clamping".
+Let's look at the code provided in the prompt to find the exact location.
+The prompt contains the full source code of `detailer.cpp`.
+I need to find the `resize_crop_mask` or `resize_crop_image` or `expand_crop` functions.
+Wait, the prompt says: "Find the most likely latent bug in the letterbox/resize handling."
+Let's examine `resize_crop_mask`:
+```cpp
+static sd_image_t resize_crop_mask(const Mask& source, const CropRegion& crop, int width, int height) {
+    sd_image_t output = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1, nullptr};
+    output.data       = static_cast<uint8_t*>(malloc(static_cast<size_t>(width) * height));
+    if (output.data == nullptr) {
+        return {0, 0, 0, nullptr};
+    }
+    float scale_x = static_cast<float>(crop.x2 - crop.x1) / width;
+    float scale_y = static_cast<float>(crop.y2 - crop.y1) / height;
+    for (int y = 0; y < height; ++y) {
+        int source_y = std::clamp(crop.y1 + static_cast<int>((y + 0.5f) * scale_y), 0, source.height - 1);
+        for (int x = 0; x < width; ++x) {
+            int source_x                                    = std::clamp(crop.x1 + static_cast<int>((x + 0.5f) * scale_x), 0, source.width - 1);
+            output.data[static_cast<size_t>(y) * width + x] = source.data[static_cast<size_t>(source_y) * source.width + source_x];
+        }
+    }
+    return output;
+}
+```
+If `width` or `height` is 0, division by zero occurs. But `width` and `height` come from `params.inpaint_width` and `params.inpaint_height`, which are validated to be `> 0`.
+What about `expand_crop`?
+```cpp
+static CropRegion expand_crop(CropRegion crop,
+                              int image_width,
+                              int image_height,
+                              int padding,
+                              int target_width,
+                              int target_height) {
+    crop.x1 = std::max(0, crop.x1 - padding);
+    crop.y1 = std::max(0, crop.y1 - padding);
+    crop.x2 = std::min(image_width, crop.x2 + padding);
+    crop.y2 = std::min(image_height, crop.y2 + padding);
+
+    float target_aspect = static_cast<float>(target_width) / target_height;
+    int width           = crop.x2 - crop.x1;
+    int height          = crop.y2 - crop.y1;
+    int desired_width   = width;
+    int desired_height  = height;
+    if (static_cast<float>(width) / height < target_aspect) { // Division by zero if height == 0
+        desired_width = static_cast<int>(std::ceil(height * target_aspect));
+    } else {
+        desired_height = static_cast<int>(std::ceil(width / target_aspect));
+    }
+    // ...
+}
+```
+If `height` is 0, `static_cast<float>(width) / height` divides by zero.
+When can `height` be 0? `crop.y2 - crop.y1`. `crop` comes from `mask_bbox`.
+`mask_bbox` finds the bounding box of non-zero pixels. If the mask is empty or has no non-zero pixels, it returns `false`. So `crop` is only used if `mask_bbox` returns true, meaning `x2 > x1` and `y2 > y1`, so `width > 0` and `height > 0`.
+Wait, `expand_crop` clamps `crop.x1`, `crop.y1`, `crop.x2`, `crop.y2` to image bounds. It's possible that after padding and clamping, `width` or `height` could be 0? Unlikely if original crop is valid and padding >= 0.
+But wait, look at `make_letterbox_input`:
+```cpp
+static LetterboxInput make_letterbox_input(sd_image_t image, int input_size) {
+    LetterboxInput result;
+
+===== CONTENT =====
+```diff
+--- a/src/detailer.cpp
++++ b/src/detailer.cpp
+@@ -338,7 +338,7 @@ static CropRegion expand_crop(CropRegion crop,
+     int width           = crop.x2 - crop.x1;
+     int height          = crop.y2 - crop.y1;
+     int desired_width   = width;
+-    int desired_height  = height;
++    int desired_height  = std::max(1, height);
+     if (static_cast<float>(width) / height < target_aspect) {
+         desired_width = static_cast<int>(std::ceil(height * target_aspect));
+     } else {
+```
