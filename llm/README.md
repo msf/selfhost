@@ -62,7 +62,7 @@ curl -s http://127.0.0.1:8090/v1/models | jq '.data[].id'
 # Hit a specific model — llama-swap routes by the "model" field
 curl -s http://127.0.0.1:8090/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"gemma-31b","messages":[{"role":"user","content":"hi"}]}'
+  -d '{"model":"gemma-31b-qat","messages":[{"role":"user","content":"hi"}]}'
 ```
 
 `-watch-config` is on, so editing `llama-swap.yaml` reloads without a service

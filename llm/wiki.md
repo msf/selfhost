@@ -11,11 +11,10 @@
 
 | Model | Type | Quant | Context | VRAM |
 |-------|------|-------|---------|------|
-| gemma-31b | Gemma 4 dense 31B | UD-Q5_K_XL | 131k | ~27.7 GiB |
+| gemma-31b-qat | Gemma 4 dense 31B QAT + MTP | UD-Q4_K_XL | 131k | ~23.3 GiB |
 | qwen-27b | Qwen 3.6 dense 27B | UD-Q5_K_XL | 131k | ~25 GiB |
 | gemma-26b-moe | Gemma 4 26B-A4B | UD-Q6_K_XL | 131k | ~24.8 GiB |
 | qwen-35b-moe | Qwen 3.6 35B-A3B | UD-Q5_K_XL | 131k | ~23 GiB |
-| gemma-31b-spec | Speculative decoding (31B + E2B draft) | UD-Q4_K_XL | 65k | ~28 GiB |
 | gemma-e4b | Gemma 4 E4B | Q6_K_L | 32k | ~8 GiB |
 | qwen-4b | Qwen3 4B | Q4_K_M | 32k | ~4 GiB |
 

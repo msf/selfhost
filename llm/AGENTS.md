@@ -139,7 +139,9 @@ Header reprints every 50 rows.
      | grep -E 'common_params_fit_impl|common_memory_breakdown_print'
    ```
 
-   Example output for gemma-31b at `-c 131072` (validated 2026-05-07):
+   Example output for the old PTQ gemma-31b at `-c 131072` (validated
+   2026-05-07; that entry was replaced by gemma-31b-qat on 2026-08-07, but the
+   output format is unchanged):
    ```
    common_memory_breakdown_print: |   - Vulkan0 ... | 32624 = 32104 + (27461 = 20861 + 6077 + 522) + -26942 |
    common_params_fit_impl: projected to use 27461 MiB of device memory vs. 32104 MiB of free device memory

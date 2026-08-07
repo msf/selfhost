@@ -74,45 +74,61 @@ models:
   # After that restart, these per-model env blocks are redundant and can be
   # removed (the env propagates llama-swap → llama-server children).
 
-  # --- Gemma 4 31B PTQ (regular post-training quant) -------------------------
+  # --- Gemma 4 31B QAT (quantization-aware training) -------------------------
+  # The PTQ entry (`gemma-31b`, gemma-4-31B-it-UD-Q4_K_XL) was removed
+  # 2026-08-07: exam_v3 on this box scored QAT median 12/13 vs PTQ 5/13 over 5
+  # seeds each, both compiling 5/5, and QAT is 3 GB smaller. `gemma-31b` is now
+  # an alias onto QAT so old references keep working. Weights still on disk at
+  # ${models_dir}/gemma-4-31B-it/ if the comparison ever needs redoing.
+  # See blogpost/benchmarking_llms/docs/reports/EXAM_V3_2026-08-07_R9700.md.
+  #
   # VRAM forecast (q8 KV, 1.5 GiB compute scratch budget; R9700 = 32 GiB):
-  #   gemma-31b @ 131k → wts 20.4 + KV 5.8 + cmp 1.5 = ~27.7 GiB ✓ 4 GiB margin
-  #   gemma-31b @ 180k → wts 20.4 + KV 7.6 + cmp 1.5 = ~29.5 GiB ✓ 2.5 GiB margin
+  #   @131k → wts 17.3 + KV 5.8 + cmp 1.5 + drafter 0.3 = ~24.9 GiB, ~7 GiB free
   # Gemma 4 has interleaved local/global attention (swa=1024); only ~1/6 of
   # layers scale with ctx, so KV grows sub-linearly.
-  "gemma-31b":
-    aliases: ["gemma4-ptq", "gemma-ptq"]
-    ttl: 86400
-    # SWA prompt-cache checkpoints fully DISABLED (`-cpent -1
-    # --ctx-checkpoints 0 --cache-ram 0`). Default behaviour creates a
-    # 637 MiB checkpoint every 8 KiB tokens during prefill, capped at
-    # 8 GiB total. In our hermes workload that's pure cost: every turn
-    # appends tool-call output so the prefix shifts, all in-flight
-    # checkpoints get invalidated and erased before any reuse can
-    # happen. The only outcome was llama-server ballooning to ~23 GiB
-    # of host RAM and triggering massive swap thrashing (2026-05-07).
-    # If you find yourself sending the same long prefix repeatedly
-    # without modification (e.g. RAG with stable system prompt), it's
-    # worth re-enabling and tuning.
-    cmd: |
-      ${llama-server}
-      -m ${models_dir}/gemma-4-31B-it/gemma-4-31B-it-UD-Q4_K_XL.gguf
-      --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
-
-  # --- Gemma 4 31B QAT (quantization-aware training) -------------------------
   # Trained with simulated 4-bit noise during training → near-BF16 quality at
   # 4-bit footprint. 17.3 GB vs 18.8 GB PTQ. Unsloth UD-Q4_K_XL achieves
   # 96.67% top-1 accuracy vs BF16 QAT checkpoint (99.96% byte-exactness).
   # QAT 4-bit quality ≈ PTQ Q6-K quality while 30% smaller on disk.
   # VRAM forecast: ~3 GiB less weights than PTQ Q5, similar to PTQ Q4.
   "gemma-31b-qat":
-    aliases: ["gemma4", "gemma", "gemma4-qat", "gemma-qat"]
+    aliases: ["gemma4", "gemma", "gemma4-qat", "gemma-qat", "gemma-31b"]
     ttl: 86400
-    # SWA prompt-cache checkpoints fully DISABLED. Same reasoning as gemma-31b.
+    # SWA prompt-cache checkpoints fully DISABLED. Same reasoning as the
+    # (now removed) PTQ entry: every turn shifts the prefix, so checkpoints are
+    # invalidated before they are ever reused and only cost host RAM.
+    #
+    # MTP (added 2026-08-07). llama.cpp PR #23398 landed the GEMMA4_ASSISTANT
+    # arch on 2026-06-07; we run b10025 (2026-07-15), so it is available. The
+    # drafter is a separate 280 MB file, not a head baked into the target, and
+    # it reads the trunk KV read-only — so it costs weights only, no second
+    # KV cache.
+    #
+    # Measured on this box, 2048-token generation, identical prompt/seed:
+    #   no MTP            25.23 t/s
+    #   MTP n-max 4       56.34 t/s   acceptance 69.1%   <- chosen
+    #   MTP n-max 6       46.77 t/s   acceptance 52.5%
+    #   MTP n-max 8            —      acceptance 44.4%
+    # 2.23x. Acceptance falls faster than the deeper draft pays for, so
+    # Unsloth's recommended n-max 4 is also the measured optimum here.
+    #
+    # Drafter precision: Q4_0 is the *native* QAT drafter (~97% byte-exact on
+    # the int4 grid). The Q8_0 upcast measured 55.19 t/s / 69.3% acceptance —
+    # no gain for 235 MB more, so Q4_0 it is.
+    #
+    # Note `-ctk/-ctv q8_0` from the macro is in force and MTP works fine with
+    # it. An older note claimed quantised KV breaks Gemma 4 MTP (0% acceptance);
+    # that predates the merge and is not true of b10025.
+    #
+    # Samplers are Unsloth's published Gemma 4 defaults (temp 1.0, top_p 0.95,
+    # top_k 64). Clients that send their own values still override these.
     cmd: |
       ${llama-server}
       -m ${models_dir}/gemma-4-31B-it-qat/gemma-4-31B-it-qat-UD-Q4_K_XL.gguf
+      --model-draft ${models_dir}/gemma-4-31B-it-qat/mtp-gemma-4-31B-it-Q4_0.gguf
+      --spec-type draft-mtp --spec-draft-n-max 4
       --no-mmap -c 131072 --parallel 1 --reasoning-budget 8192
+      --temp 1.0 --top-p 0.95 --top-k 64
 
   # qwen-27b — uniform attention, no SWA, 64 layers; KV-heavy.
   #
@@ -282,44 +298,13 @@ models:
       --temp 0.7 --top-p 0.95 --top-k 20 --min-p 0.0
       # presence-penalty removed 2026-05-17: see qwen-27b-mtp above.
 
-  # --- Speculative decoding experiment (added 2026-05-08) -------------------
-  #
-  # Gemma 4 31B (UD-Q4_K_XL, our local) main + Gemma 4 E2B (Q8_0, our
-  # local) draft. Adapted from a r/LocalLLaMA recipe; full notes at
-  # triage/2026-05-08-speculative-decoding.md (acceptance rates,
-  # parameter sweep, gotchas).
-  #
-  # VRAM forecast at -c 65536 (verify post-load via /logs/stream):
-  #   main 31B UD-Q4_K_XL : ~17 GiB  (3 GiB smaller than Q5_K_XL)
-  #   draft E2B Q8_0      :  ~5 GiB
-  #   main KV (q8) @ 65k  : ~2.8 GiB
-  #   draft KV (q8) @ 65k : ~2.4 GiB
-  #   compute scratch     : ~1.0 GiB
-  #   ≈ 28 GiB total → ~4 GiB margin in 32 GiB R9700.
-  #
-  # `--spec-draft-n-max 8`: tuned down from recipe's 32. With 8, draft
-  #   acceptance jumps from 42% → 72% on deterministic output (Python).
-  #   Less wasted draft work = better effective tput, even when raw
-  #   tg/s doesn't shift much (Vulkan main↔draft sync is the bottleneck).
-  # `--reasoning off` + LLAMA_CHAT_TEMPLATE_KWARGS env: disable thinking
-  #   mode for clean tg/s measurement.
-  "gemma-31b-spec":
-    aliases: ["gemma4-spec", "spec"]
-    ttl: 86400
-    env:
-      # JSON value passed via env var instead of cmd flag — llama-swap's
-      # arg-array shell-less spawn strips outer quotes, breaking the
-      # JSON parser when `--chat-template-kwargs '{"k":v}'` is passed
-      # on the command line. Env var bypasses the quoting problem.
-      - 'LLAMA_CHAT_TEMPLATE_KWARGS={"enable_thinking":false}'
-    cmd: |
-      ${llama-server}
-      -m ${models_dir}/gemma-4-31B-it/gemma-4-31B-it-UD-Q4_K_XL.gguf
-      --model-draft ${models_dir}/gemma-4-E2B-it/gemma-4-E2B-it-Q8_0.gguf
-      --no-mmap --ctx-size 65536 --parallel 1
-      --spec-draft-n-max 3 --spec-draft-n-min 0
-      --n-gpu-layers-draft 999
-      --cache-type-k-draft q8_0 --cache-type-v-draft q8_0
+  # The E2B-draft speculative entry (`gemma-31b-spec`, added 2026-05-08) was
+  # removed 2026-08-07. It ran the PTQ weights with a separate 5 GB E2B drafter
+  # that needed its own KV cache, capping context at 65536 to fit. Real MTP on
+  # the QAT weights supersedes it on every axis: 2.23x vs its ~72% acceptance,
+  # a 280 MB drafter instead of 5 GB, no second KV cache, and full 131072
+  # context. Historical notes stay at triage/2026-05-08-speculative-decoding.md.
+  # This orphans ${models_dir}/gemma-4-E2B-it/ (5.0 GB) — kept on disk, unused.
 
   # --- Small / fast (smoke tests, draft candidates for MTP later) -----------
   # mmap is fine here — files are <8 GiB and reload should be fast.
@@ -340,11 +325,9 @@ groups:
     swap: true
     exclusive: true
     members:
-      - "gemma-31b"
       - "gemma-31b-qat"
       - "qwen-27b"
       - "qwen-27b-mtp"
       - "gemma-26b-moe"
       - "qwen-35b-moe"
       - "qwen-35b-moe-mtp"
-      - "gemma-31b-spec"

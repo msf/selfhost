@@ -85,7 +85,9 @@ chat-template excerpt that proves it).
 ### "Decode tok/s is half of normal"
 
 Normal targets on R9700/Vulkan:
-- gemma-31b: ~70 tok/s
+- gemma-31b-qat: ~56–65 tok/s with MTP (measured 2026-08-07; 25 tok/s without
+  it, so a sudden drop to ~25 means the drafter failed to load — check the
+  server log for `[spec]` warnings)
 - qwen-27b dense: ~60–75 tok/s
 - qwen-27b-mtp: ~80–120 tok/s (depends on draft acceptance)
 - qwen-35b-moe (A3B): ~80–100 tok/s
@@ -177,6 +179,7 @@ systemctl --user restart llama-swap
 - `triage/2026-05-07-oom-after-boot.md` — VRAM/GTT eviction deep-dive.
 - `triage/2026-05-14-prompt-cache-miss.md` — Pattern A (full cache loss).
 - `triage/2026-05-16-prefix-invalidation.md` — Pattern B (resolved).
-- `triage/2026-05-08-speculative-decoding.md` — gemma-31b-spec setup.
+- `triage/2026-05-08-speculative-decoding.md` — gemma-31b-spec setup
+  (historical; that entry was removed 2026-08-07 in favour of Gemma 4 MTP).
 - `enable-mtp-for-qwen.md` — MTP flags + caveats.
 - `~/.claude/lessons.md` — cross-session rules accumulated from incidents.
