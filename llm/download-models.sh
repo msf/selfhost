@@ -8,10 +8,15 @@ mkdir -p "$MODELS"
 
 # repo|subdir|filename|expected_bytes
 ITEMS=(
-  # PTQ 31B: no longer served. llama-swap dropped the `gemma-31b` entry on
-  # 2026-08-07 (exam_v3 scored QAT median 12/13 vs PTQ 5/13 over 5 seeds each).
-  # Kept in the manifest so the manifest still describes what is on disk, and
-  # so the comparison can be reproduced. Delete the files to reclaim ~20 GB.
+  # PTQ 31B: no longer served, and DELETED FROM DISK 2026-08-07 along with the
+  # non-QAT 26B and the orphaned E2B drafter (91.7 GB reclaimed). llama-swap
+  # dropped the `gemma-31b` entry the same day — exam_v3 scored QAT median
+  # 12/13 vs PTQ 5/13 over 5 seeds each.
+  #
+  # These lines are kept so the QAT-vs-PTQ comparison stays reproducible: run
+  # this script to re-fetch. The `mmproj-F16.gguf` in each Gemma dir was NOT
+  # deleted — the QAT repos don't ship one, so those are the only vision
+  # projectors on the box.
   "unsloth/gemma-4-31B-it-GGUF|gemma-4-31B-it|gemma-4-31B-it-UD-Q5_K_XL.gguf"
   "unsloth/gemma-4-31B-it-GGUF|gemma-4-31B-it|gemma-4-31B-it-UD-Q4_K_XL.gguf"
   "unsloth/gemma-4-31B-it-GGUF|gemma-4-31B-it|mmproj-F16.gguf"
