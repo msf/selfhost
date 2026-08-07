@@ -191,10 +191,31 @@ models:
     # buys ~10s of grace under sustained pressure).
     # GGML_VK_MEMORY_LOGGER=1 prints a per-allocation breakdown to the
     # llama-server log on startup — useful when sizing ctx vs VRAM.
+    # Switched to the QAT rebuild + MTP on 2026-08-07 (was the non-QAT
+    # UD-Q5_K_XL, 21.2 GB). Same reasoning as the 31B: QAT 4-bit lands near
+    # BF16 quality at a smaller footprint — 14.2 GB here, ~7 GB less. This is
+    # also the exact build the Framework 13 ran as exam_v3 cell C (11/13, the
+    # best local score recorded in that lab), so scores are now comparable
+    # across the two machines instead of confounded by a quant difference.
+    #
+    # MTP measured on this box 2026-08-07, 2048-token generation, same prompt
+    # and seed, decode t/s:
+    #   old non-QAT UD-Q5_K_XL          72.5
+    #   QAT UD-Q4_K_XL, no MTP          92.5   (1.27x — quant alone)
+    #   QAT UD-Q4_K_XL + MTP n-max 4   128.0   (1.38x on top — MTP alone)
+    # Net 1.76x vs what this entry served before.
+    #
+    # Note upstream reports >2x on *dense* Gemma 4 and NO speed-up on the MoE.
+    # The no-speed-up half is false here: 1.38x is smaller than the dense
+    # 31B's 2.23x, but it is real and repeatable on this hardware. Drafter
+    # costs 252 MB and no KV cache.
     cmd: |
       ${llama-server}
-      -m ${models_dir}/gemma-4-26B-A4B-it/gemma-4-26B-A4B-it-UD-Q5_K_XL.gguf
+      -m ${models_dir}/gemma-4-26B-A4B-it-qat/gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf
+      --model-draft ${models_dir}/gemma-4-26B-A4B-it-qat/mtp-gemma-4-26B-A4B-it-Q4_0.gguf
+      --spec-type draft-mtp --spec-draft-n-max 4
       --no-mmap  -c 131072 --parallel 1 --reasoning-budget 8192
+      --temp 1.0 --top-p 0.95 --top-k 64
 
   # qwen-35b-moe — uniform attention, 2 kv_heads only (cheaper KV than qwen-27b).
   # Forecast: @131k → wts 20.2 + KV 5.0 + compute 1.5 = ~26.7 GiB.

@@ -26,6 +26,12 @@ ITEMS=(
   # (PR #22673 merged 2026-05-16). See llm/enable-mtp-for-qwen.md.
   "unsloth/Qwen3.6-27B-MTP-GGUF|Qwen3.6-27B-MTP|Qwen3.6-27B-UD-Q4_K_XL.gguf"
   "unsloth/Qwen3.6-27B-MTP-GGUF|Qwen3.6-27B-MTP|mmproj-F16.gguf"
+  # 26B QAT + MTP (added 2026-08-07): the QAT rebuild the Framework 13 ran as
+  # exam_v3 cell C (14.2 GB), plus its MTP drafter. Replaces the non-QAT
+  # UD-Q5_K_XL as the served gemma-26b-moe. Same reasoning as the 31B: QAT
+  # 4-bit lands near BF16 quality at a smaller footprint.
+  "unsloth/gemma-4-26B-A4B-it-qat-GGUF|gemma-4-26B-A4B-it-qat|gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf"
+  "unsloth/gemma-4-26B-A4B-it-qat-GGUF|gemma-4-26B-A4B-it-qat|MTP/mtp-gemma-4-26B-A4B-it-Q4_0.gguf"
   "unsloth/gemma-4-26B-A4B-it-GGUF|gemma-4-26B-A4B-it|gemma-4-26B-A4B-it-UD-Q5_K_XL.gguf"
   "unsloth/gemma-4-26B-A4B-it-GGUF|gemma-4-26B-A4B-it|gemma-4-26B-A4B-it-UD-Q6_K_XL.gguf"
   "unsloth/gemma-4-26B-A4B-it-GGUF|gemma-4-26B-A4B-it|mmproj-F16.gguf"
