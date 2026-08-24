@@ -5,6 +5,7 @@ services:
     command:
       - '-memory.allowedBytes=8GiB'
       - '-retentionPeriod=10y'
+      - '-dedup.minScrapeInterval=1ms'
       - '-influxListenAddr=:8089'
     ports:
       - 8428:8428
