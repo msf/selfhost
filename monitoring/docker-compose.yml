@@ -6,6 +6,9 @@ services:
       - '-memory.allowedBytes=8GiB'
       - '-retentionPeriod=10y'
       - '-dedup.minScrapeInterval=1ms'
+      # 5.5 years of 5-second solar samples is 35M+ per series, past the
+      # 30M default: every multi-year Grafana panel 422s without this.
+      - '-search.maxSamplesPerSeries=150000000'
       - '-influxListenAddr=:8089'
     ports:
       - 8428:8428
