@@ -70,6 +70,10 @@ type switchStatus struct {
 	Temperature *struct {
 		C *float64 `json:"tC"`
 	} `json:"temperature"`
+	Counts *struct {
+		SwitchOn *float64 `json:"switch_on"`
+		OnTime   *float64 `json:"on_time"`
+	} `json:"counts"`
 }
 
 type sensorStatus struct {
@@ -341,6 +345,12 @@ func (c *collector) scrape(d *Device, ts time.Time) ([]sample, error) {
 			}
 			if s.Temperature != nil {
 				out = appendIf(out, "shelly_switch_temperature_celsius", l, s.Temperature.C)
+			}
+			// Relay cycles are the wear budget for any surplus-diversion control
+			// loop; trend them before letting one drive the contactor.
+			if s.Counts != nil {
+				out = appendIf(out, "shelly_switch_cycles_total", l, s.Counts.SwitchOn)
+				out = appendIf(out, "shelly_switch_on_time_seconds_total", l, s.Counts.OnTime)
 			}
 
 		case "temperature", "humidity":
