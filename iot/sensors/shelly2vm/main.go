@@ -192,7 +192,7 @@ func main() {
 	log.Info("shutting down")
 }
 
-// parseDevices accepts "192.168.0.3" or "label=192.168.0.3".
+// parseDevices accepts "10.0.0.2" or "label=10.0.0.2".
 func parseDevices(s string, interval, timeout time.Duration, sleepy bool) []*Device {
 	var out []*Device
 	for _, part := range strings.Split(s, ",") {

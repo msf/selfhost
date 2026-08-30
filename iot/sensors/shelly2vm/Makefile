@@ -1,5 +1,5 @@
 BINARY := shelly2vm
-HOST   ?= margiehamilton
+HOST   ?=
 
 .PHONY: build check deploy clean
 
@@ -11,6 +11,7 @@ check:
 	go vet ./...
 
 deploy: build
+	@test -n "$(HOST)" || { echo "set HOST=<ssh target>" >&2; exit 1; }
 	scp -q $(BINARY) $(HOST):/tmp/$(BINARY).new
 
 clean:
