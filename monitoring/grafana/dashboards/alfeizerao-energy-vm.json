@@ -1,232 +1,1127 @@
 {
-  "uid": "alfeizerao-energy-vm",
-  "title": "Alfeizerao Energy (VictoriaMetrics)",
-  "schemaVersion": 39,
-  "version": 1,
-  "refresh": "10s",
+  "annotations": {
+    "list": []
+  },
   "graphTooltip": 1,
-  "time": { "from": "now-12h", "to": "now" },
-  "templating": { "list": [] },
-  "annotations": { "list": [] },
+  "id": 13,
   "links": [],
   "panels": [
     {
-      "type": "row",
-      "title": "Live Power",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "id": 1,
-      "collapsed": false,
-      "panels": []
+      "panels": [],
+      "title": "Live Power",
+      "type": "row"
     },
     {
-      "type": "timeseries",
-      "title": "Power Consumption",
-      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 1 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 4600
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OwnConsumed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GridConsumed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
       "id": 2,
-      "fieldConfig": {
-        "defaults": {
-          "unit": "watt",
-          "color": { "mode": "fixed" },
-          "custom": {
-            "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 1,
-            "fillOpacity": 15, "spanNulls": false, "showPoints": "auto",
-            "stacking": { "group": "A", "mode": "normal" },
-            "thresholdsStyle": { "mode": "line" }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 4600 } ]
-          }
-        },
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "OwnConsumed" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] },
-          { "matcher": { "id": "byName", "options": "GridConsumed" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] }
-        ]
-      },
       "options": {
-        "legend": { "calcs": [ "lastNotNull" ], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
-        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_own_consumed_watts", "legendFormat": "OwnConsumed" },
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_grid_consumed_watts", "legendFormat": "GridConsumed" }
-      ]
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum without (source) (kostal_own_consumed_watts)",
+          "legendFormat": "OwnConsumed",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum without (source) (kostal_grid_consumed_watts)",
+          "legendFormat": "GridConsumed",
+          "refId": "B"
+        }
+      ],
+      "title": "Power Consumption",
+      "type": "timeseries"
     },
     {
-      "type": "timeseries",
-      "title": "Power Generation",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
       "description": "Photovoltaics generation: self-consumed + injected to grid",
-      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 11 },
-      "id": 3,
       "fieldConfig": {
         "defaults": {
-          "unit": "watt",
-          "color": { "mode": "fixed" },
+          "color": {
+            "mode": "fixed"
+          },
           "custom": {
-            "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 1,
-            "fillOpacity": 15, "spanNulls": false, "showPoints": "auto",
-            "stacking": { "group": "A", "mode": "normal" },
-            "thresholdsStyle": { "mode": "line" }
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "thresholds": {
             "mode": "absolute",
-            "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 4600 } ]
-          }
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 4600
+              }
+            ]
+          },
+          "unit": "watt"
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "OwnConsumed" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] },
-          { "matcher": { "id": "byName", "options": "GridInjected" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OwnConsumed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GridInjected"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
         ]
       },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "id": 3,
       "options": {
-        "legend": { "calcs": [ "lastNotNull" ], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
-        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_own_consumed_watts", "legendFormat": "OwnConsumed" },
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_grid_injected_watts", "legendFormat": "GridInjected" }
-      ]
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum without (source) (kostal_own_consumed_watts)",
+          "legendFormat": "OwnConsumed",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum without (source) (kostal_grid_injected_watts)",
+          "legendFormat": "GridInjected",
+          "refId": "B"
+        }
+      ],
+      "title": "Power Generation",
+      "type": "timeseries"
     },
     {
-      "type": "row",
-      "title": "Cumulative Energy (selected range)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
       "id": 4,
-      "collapsed": false,
-      "panels": []
+      "panels": [],
+      "title": "Cumulative Energy (selected range)",
+      "type": "row"
     },
     {
-      "type": "stat",
-      "title": "Grid Power Consumed",
-      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 21 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watth"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
       "id": 5,
-      "fieldConfig": {
-        "defaults": { "unit": "watth", "color": { "mode": "fixed", "fixedColor": "red" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null } ] } },
-        "overrides": []
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "textMode": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false } },
-      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "sum_over_time(avg_over_time(kostal_grid_consumed_watts[1h])[$__range:1h])", "instant": true, "legendFormat": "" } ]
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum without (source) (sum_over_time(avg_over_time(kostal_grid_consumed_watts[1h])[$__range:1h]))",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Grid Power Consumed",
+      "type": "stat"
     },
     {
-      "type": "stat",
-      "title": "Solar Power Generated",
-      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 21 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watth"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
       "id": 6,
-      "fieldConfig": {
-        "defaults": { "unit": "watth", "color": { "mode": "fixed", "fixedColor": "green" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } },
-        "overrides": []
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "textMode": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false } },
-      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "sum_over_time(avg_over_time(kostal_AC_Power_W[1h])[$__range:1h])", "instant": true, "legendFormat": "" } ]
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum without (source) (sum_over_time(avg_over_time(kostal_AC_Power_W[1h])[$__range:1h]))",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Solar Power Generated",
+      "type": "stat"
     },
     {
-      "type": "stat",
-      "title": "Solar Power Self-Consumed",
-      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watth"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
       "id": 7,
-      "fieldConfig": {
-        "defaults": { "unit": "watth", "color": { "mode": "fixed", "fixedColor": "green" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } },
-        "overrides": []
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "textMode": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false } },
-      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "sum_over_time(avg_over_time(kostal_own_consumed_watts[1h])[$__range:1h])", "instant": true, "legendFormat": "" } ]
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum without (source) (sum_over_time(avg_over_time(kostal_own_consumed_watts[1h])[$__range:1h]))",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Solar Power Self-Consumed",
+      "type": "stat"
     },
     {
-      "type": "stat",
-      "title": "Wasted (Injected) Solar Power",
-      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "orange",
+            "mode": "fixed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "unit": "watth"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
       "id": 8,
-      "fieldConfig": {
-        "defaults": { "unit": "watth", "color": { "mode": "fixed", "fixedColor": "orange" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } },
-        "overrides": []
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "textMode": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false } },
-      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "sum_over_time(avg_over_time(kostal_grid_injected_watts[1h])[$__range:1h])", "instant": true, "legendFormat": "" } ]
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum without (source) (sum_over_time(avg_over_time(kostal_grid_injected_watts[1h])[$__range:1h]))",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Wasted (Injected) Solar Power",
+      "type": "stat"
     },
     {
-      "type": "row",
-      "title": "Now",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
       "id": 9,
-      "collapsed": false,
-      "panels": []
+      "panels": [],
+      "title": "Now",
+      "type": "row"
     },
     {
-      "type": "stat",
-      "title": "Total Power (Consumption + Generation)",
-      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 39 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2000
+              },
+              {
+                "color": "red",
+                "value": 4000
+              }
+            ]
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
       "id": 10,
-      "fieldConfig": {
-        "defaults": { "unit": "watt", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 2000 }, { "color": "red", "value": 4000 } ] } },
-        "overrides": []
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "textMode": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false } },
-      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_total_power_watts", "instant": true, "legendFormat": "" } ]
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "kostal_total_power_watts",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Power (Consumption + Generation)",
+      "type": "stat"
     },
     {
-      "type": "row",
-      "title": "Raw metrics from Inverter",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 45 },
-      "id": 11,
       "collapsed": false,
-      "panels": []
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "id": 11,
+      "panels": [],
+      "title": "Raw metrics from Inverter",
+      "type": "row"
     },
     {
-      "type": "timeseries",
-      "title": "Kostal 4.6-2 MP Plus (Power, raw)",
-      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 46 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 46
+      },
       "id": 12,
-      "fieldConfig": {
-        "defaults": {
-          "unit": "watt",
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 1, "fillOpacity": 0, "spanNulls": false, "showPoints": "auto", "stacking": { "group": "A", "mode": "none" } }
-        },
-        "overrides": []
-      },
       "options": {
-        "legend": { "calcs": [ "lastNotNull" ], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
-        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_AC_Power_W", "legendFormat": "AC_Power_W" },
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_OwnConsumedPower_W", "legendFormat": "OwnConsumedPower_W" },
-        { "refId": "C", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_GridInjectedPower_W", "legendFormat": "GridInjectedPower_W" },
-        { "refId": "D", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_GridConsumedPower_W", "legendFormat": "GridConsumedPower_W" }
-      ]
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "sum without (source) (kostal_AC_Power_W)",
+          "legendFormat": "AC_Power_W",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "kostal_OwnConsumedPower_W",
+          "legendFormat": "OwnConsumedPower_W",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "kostal_GridInjectedPower_W",
+          "legendFormat": "GridInjectedPower_W",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "kostal_GridConsumedPower_W",
+          "legendFormat": "GridConsumedPower_W",
+          "refId": "D"
+        }
+      ],
+      "title": "Kostal 4.6-2 MP Plus (Power, raw)",
+      "type": "timeseries"
     },
     {
-      "type": "timeseries",
-      "title": "Kostal 4.6-2 MP Plus (Voltage, raw)",
-      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 46 },
-      "id": 13,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "volt",
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 1, "fillOpacity": 0, "spanNulls": false, "showPoints": "auto", "stacking": { "group": "A", "mode": "none" } }
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "volt"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 46
+      },
+      "id": 13,
       "options": {
-        "legend": { "calcs": [ "lastNotNull" ], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
-        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_AC_Voltage_V", "legendFormat": "AC_Voltage_V" },
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_DC_Voltage1_V", "legendFormat": "DC_Voltage1_V" },
-        { "refId": "C", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_DC_Voltage2_V", "legendFormat": "DC_Voltage2_V" },
-        { "refId": "D", "datasource": { "type": "prometheus", "uid": "victoriametrics" }, "expr": "kostal_LINK_Voltage_V", "legendFormat": "LINK_Voltage_V" }
-      ]
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "kostal_AC_Voltage_V",
+          "legendFormat": "AC_Voltage_V",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "kostal_DC_Voltage1_V",
+          "legendFormat": "DC_Voltage1_V",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "kostal_DC_Voltage2_V",
+          "legendFormat": "DC_Voltage2_V",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "kostal_LINK_Voltage_V",
+          "legendFormat": "LINK_Voltage_V",
+          "refId": "D"
+        }
+      ],
+      "title": "Kostal 4.6-2 MP Plus (Voltage, raw)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "id": 14,
+      "panels": [],
+      "title": "Data Provenance",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "description": "Which tier fed each period. Real-time samples carry no `source` label; backfills from the inverter's own history carry source=history_10m_avg (10-minute power), history_daily_avg or history_monthly_avg (flat average power reproducing the inverter's energy total).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "spanNulls": false
+          },
+          "mappings": [
+            {
+              "options": {
+                "1": {
+                  "index": 0,
+                  "text": " "
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Live (5s)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Backfill: 10-min average"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Backfill: daily average"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Backfill: monthly average"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      },
+      "id": 15,
+      "options": {
+        "alignValue": "center",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "rowHeight": 0.9,
+        "showValue": "never",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "clamp_max(count_over_time(kostal_AC_Power_W{source=\"\"}[$__interval]), 1)",
+          "legendFormat": "Live (5s)",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "clamp_max(count_over_time(kostal_AC_Power_W{source=\"history_10m_avg\"}[$__interval]), 1)",
+          "legendFormat": "Backfill: 10-min average",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "clamp_max(count_over_time(kostal_AC_Power_W{source=\"history_daily_avg\"}[$__interval]), 1)",
+          "legendFormat": "Backfill: daily average",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "clamp_max(count_over_time(kostal_AC_Power_W{source=\"history_monthly_avg\"}[$__interval]), 1)",
+          "legendFormat": "Backfill: monthly average",
+          "refId": "D"
+        }
+      ],
+      "title": "Sample provenance",
+      "type": "state-timeline"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 62
+      },
+      "id": 16,
+      "panels": [],
+      "title": "DHW / Shelly",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 0,
+            "lineWidth": 2,
+            "pointSize": 6,
+            "showPoints": "always",
+            "spanNulls": true
+          },
+          "min": 0,
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 63
+      },
+      "id": 18,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "shelly_temperature_celsius{device=\"sensor\"}",
+          "legendFormat": "H&T {{sensor}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Ambient temperature",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "dark-blue",
+                  "index": 0,
+                  "text": "off"
+                },
+                "1": {
+                  "color": "orange",
+                  "index": 1,
+                  "text": "ON"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 63
+      },
+      "id": 17,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "mergeValues": true,
+        "showValue": "never"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "shelly_switch_output",
+          "legendFormat": "{{device}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Water heater on/off",
+      "type": "state-timeline"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P4169E866C3094E38"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          },
+          "min": 0,
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 63
+      },
+      "id": 19,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P4169E866C3094E38"
+          },
+          "expr": "shelly_switch_power_watts{device=\"deposito\"}",
+          "legendFormat": "{{device}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Water heater load",
+      "type": "timeseries"
     }
-  ]
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-12h",
+    "to": "now"
+  },
+  "title": "Alfeizerao Energy (VictoriaMetrics)",
+  "uid": "alfeizerao-energy-vm",
+  "version": 4
 }
